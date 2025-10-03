@@ -22,11 +22,20 @@ def sidebar_api_input():
                 help="API 키는 안전하게 저장되며 서버로 전송되지 않습니다"
             )
 
+            serpapi_key = st.text_input(
+                "SerpAPI 키를 입력하세요 (선택사항)",
+                type="password",
+                value=st.session_state.get('serpapi_api_key', ''),
+                help="신조어 검색 기능을 위한 SerpAPI 키"
+            )
+
             submitted = st.form_submit_button("API 키 등록")
             if submitted:
                 if anthropic_key:
                     st.session_state.anthropic_api_key = anthropic_key
                     st.session_state.api_key_submitted = True
+                    if serpapi_key:
+                        st.session_state.serpapi_api_key = serpapi_key
                     st.success("API 키가 등록되었습니다!")
                 else:
                     st.error("API 키를 입력해주세요")
@@ -41,6 +50,7 @@ def sidebar_api_input():
         if st.session_state.get('api_key_submitted', False):
             if st.button("API 키 삭제"):
                 st.session_state.anthropic_api_key = ""
+                st.session_state.serpapi_api_key = ""
                 st.session_state.api_key_submitted = False
                 st.rerun()
 
