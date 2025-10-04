@@ -390,9 +390,6 @@ def run_app():
                 )
                 response = result.content
 
-                # # 응답에 맞는 이미지 선택
-                # selected_image = select_image_for_context(response)
-
                 # Claude API를 사용하여 답변을 맥락 단위로 분할
                 split_parts = split_response_by_context(response, chat_model)
 
