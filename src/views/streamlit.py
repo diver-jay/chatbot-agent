@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+from datetime import datetime
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # 분리된 모듈 임포트
@@ -13,6 +14,7 @@ from src.services.tone_selector import ToneSelector
 from src.services.search_service import SearchService
 from src.services.term_detector import TermDetector
 from src.services.entity_detector import EntityDetector
+from src.services.sns_relevance_checker import SNSRelevanceChecker
 
 # SessionManager 및 UIComponent 인스턴스 생성
 session_manager = StreamlitSessionManager()
@@ -254,32 +256,101 @@ def run_app():
 
         # 신조어/모르는 용어 및 인물/사건 감지 및 검색
         search_context = ""
+        sns_content = None
         try:
+            print(f"\n{'='*60}")
+            print(f"[DEBUG] 사용자 질문: {question}")
+            print(f"{'='*60}\n")
+
             # Detector 초기화
             term_detector = TermDetector(chat_model)
             entity_detector = EntityDetector(chat_model)
 
             # 용어 감지
             term_needs_search, term_search_term = term_detector.detect(question)
+            print(f"[TermDetector] 검색 필요: {term_needs_search} | 검색어: {term_search_term}")
 
-            # 인물/사건 감지 (influencer_name 전달)
-            entity_needs_search, entity_search_term = entity_detector.detect(question, influencer_name)
+            # TermDetector가 신조어를 감지했으면 EntityDetector 건너뛰기
+            if term_needs_search:
+                print(f"[EntityDetector] ⏭️ 건너뜀 (TermDetector에서 신조어 감지)")
+                needs_search = True
+                search_term = term_search_term
+                is_daily_life = False  # 신조어는 일상 질문 아님
+            else:
+                # 인물/사건 감지 (influencer_name 전달)
+                entity_needs_search, entity_search_term, is_daily_life = entity_detector.detect(question, influencer_name)
+                print(f"[EntityDetector] 검색 필요: {entity_needs_search} | 검색어: {entity_search_term} | 일상: {is_daily_life}")
+                needs_search = entity_needs_search
+                search_term = entity_search_term
 
-            # 검색할 용어 결정 (우선순위: 인물/사건 > 신조어)
-            needs_search = entity_needs_search or term_needs_search
-            search_term = entity_search_term if entity_needs_search else term_search_term
+            print(f"[Search Decision] 최종 검색 필요: {needs_search} | 최종 검색어: {search_term} | 일상: {is_daily_life if not term_needs_search else 'N/A'}")
 
             if needs_search and search_term:
+                # 현재 날짜 정보 (KST 기준)
+                current_date = datetime.now().strftime("%Y년 %m월 %d일")
+                print(f"[Current Date] {current_date}")
+
                 # SearchService 초기화 (SerpAPI 키 필요)
                 serpapi_key = session_manager.get_serpapi_key()
                 if serpapi_key:
                     search_service = SearchService(api_key=serpapi_key)
-                    search_results = search_service.search(search_term)
-                    search_summary = search_service.extract_summary(search_results)
+                    print(f"[SearchService] 초기화 완료")
 
-                    # 검색 결과를 컨텍스트에 추가
-                    search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n"
-                    print(f"[Search] 검색 완료: {search_context}")
+                    # 일상 관련 질문일 때만 SNS 콘텐츠 검색
+                    if is_daily_life:
+                        print(f"[SNS Search] ✅ 일상 질문 감지 → SNS 검색 시작")
+                        # SNS 콘텐츠 검색 시도
+                        sns_content = search_service.search_sns_content(search_term)
+                        print(f"[SNS Search] 검색어: {search_term}")
+                        print(f"[SNS Search] 검색 결과: {sns_content}")
+
+                        # SNS 콘텐츠를 찾았으면 관련성 검증
+                        if sns_content and sns_content.get("found"):
+                            print(f"[Search] SNS 콘텐츠 발견 → 관련성 검증 시작")
+
+                            # 관련성 검증
+                            relevance_checker = SNSRelevanceChecker(chat_model)
+                            is_relevant, reason = relevance_checker.check_relevance(
+                                user_question=question,
+                                sns_title=sns_content.get("title", ""),
+                                platform=sns_content.get("platform", "")
+                            )
+
+                            if is_relevant:
+                                print(f"[Search] ✅ SNS 콘텐츠 관련성 확인 → SNS 정보 사용")
+                                # SNS 게시물 정보만 컨텍스트로 전달
+                                platform_name = "Instagram" if sns_content.get("platform") == "instagram" else "YouTube"
+                                sns_title = sns_content.get("title", "")
+                                search_context = f"\n\n[{platform_name} 게시물 정보]\n{sns_title}\n\n[참고] 오늘 날짜: {current_date}\n"
+                                print(f"[Search] SNS 컨텍스트: {search_context}")
+                            else:
+                                print(f"[Search] ❌ SNS 콘텐츠 관련성 없음 → 일반 검색으로 전환")
+                                print(f"[Search] 이유: {reason}")
+                                # SNS 무효화하고 일반 검색 수행
+                                sns_content = None
+                                search_results = search_service.search(search_term)
+                                search_summary = search_service.extract_summary(search_results)
+                                search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n\n[참고] 오늘 날짜: {current_date}\n"
+                                print(f"[Search] 검색 완료: {search_context}")
+                        else:
+                            # SNS를 못 찾았으면 일반 검색 수행
+                            print(f"[Search] SNS 콘텐츠 없음 → 일반 검색 수행")
+                            search_results = search_service.search(search_term)
+                            search_summary = search_service.extract_summary(search_results)
+                            search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n\n[참고] 오늘 날짜: {current_date}\n"
+                            print(f"[Search] 검색 완료: {search_context}")
+                    else:
+                        print(f"[SNS Search] ❌ 일상 질문 아님 → SNS 검색 건너뜀")
+                        # 일반 검색만 수행
+                        search_results = search_service.search(search_term)
+                        search_summary = search_service.extract_summary(search_results)
+
+                        # 신조어 검색인 경우 특별 지시 추가
+                        if term_needs_search:
+                            search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n\n[참고] 오늘 날짜: {current_date}\n\n[지시사항] 위 검색 정보를 바탕으로 자연스럽게 답변하세요. 검색어('{search_term}')를 그대로 반복하지 말고, 그 의미를 이해한 상태로 대화하세요.\n"
+                        else:
+                            search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n\n[참고] 오늘 날짜: {current_date}\n"
+                        print(f"[Search] 검색 완료: {search_context}")
                 else:
                     print("[Search] SerpAPI 키가 설정되지 않음")
 
@@ -292,6 +363,29 @@ def run_app():
 
                 # 검색 컨텍스트가 있으면 질문에 추가
                 enhanced_question = question + search_context
+
+                # SNS 콘텐츠가 있으면 추가 지시사항 삽입
+                if sns_content and sns_content.get("found"):
+                    platform = sns_content.get("platform", "")
+                    url = sns_content.get("url", "")
+                    sns_title = sns_content.get("title", "")
+                    platform_name = "인스타그램" if platform == "instagram" else "유튜브"
+
+                    print(f"[Response Generation] ✅ SNS 콘텐츠 발견 → AI에게 {platform_name} 게시물 집중 지시")
+                    sns_instruction = f"""
+
+[중요 지시사항]
+답변은 반드시 위의 {platform_name} 게시물 내용에 대해서만 이야기하세요.
+다른 검색 정보는 무시하고, 오직 {platform_name} 게시물 주제에만 집중하세요.
+
+답변 방식:
+- 자연스럽게 "{platform_name}에 올렸는데 봤어?", "어제 {platform_name}에 올린 거 있는데~" 같은 표현 사용
+- SNS 링크 URL은 절대 출력하지 마세요 (시스템이 자동으로 첨부)
+- {platform_name} 게시물 내용과 관련된 이야기만 하세요
+"""
+                    enhanced_question += sns_instruction
+                else:
+                    print(f"[Response Generation] ❌ SNS 콘텐츠 없음 → 일반 답변")
                 
                 result = conversation.invoke(
                     {"input": enhanced_question},
@@ -313,7 +407,27 @@ def run_app():
                         # 첫 번째 메시지는 스피너를 대체
                         spinner_placeholder.markdown(part)
                         spinner_context.__exit__(None, None, None)
-                        session_manager.add_message("assistant", part)
+
+                        # SNS 콘텐츠가 있으면 첫 번째 메시지 아래에 표시
+                        if sns_content and sns_content.get("found"):
+                            platform = sns_content.get("platform", "")
+                            url = sns_content.get("url", "")
+                            thumbnail = sns_content.get("thumbnail", "")
+
+                            # 썸네일이 있으면 표시
+                            if thumbnail:
+                                st.image(thumbnail, use_container_width=False, width=300)
+
+                            # 링크 버튼 표시
+                            platform_emoji = "📷" if platform == "instagram" else "🎥"
+                            platform_name = "Instagram" if platform == "instagram" else "YouTube"
+                            st.markdown(f"{platform_emoji} [{platform_name}에서 보기]({url})")
+
+                            # SNS 콘텐츠와 함께 메시지 저장
+                            session_manager.add_message("assistant", part, sns_content=sns_content)
+                        else:
+                            # SNS 콘텐츠 없이 메시지 저장
+                            session_manager.add_message("assistant", part)
                     else:
                         # 두 번째 메시지부터는 타이핑 중 표시 후 새 메시지
                         typing_context, typing_placeholder = ui_component.display_typing_animation(len(part))

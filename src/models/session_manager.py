@@ -27,7 +27,7 @@ class SessionManager(ABC):
         pass
 
     @abstractmethod
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: str, content: str, sns_content=None):
         """메시지를 세션에 추가합니다."""
         pass
 
@@ -103,8 +103,11 @@ class StreamlitSessionManager(SessionManager):
         st.session_state.temp_influencer_name = influencer_name.strip()
         st.session_state.loading = True
 
-    def add_message(self, role: str, content: str):
-        st.session_state.messages.append({"role": role, "content": content})
+    def add_message(self, role: str, content: str, sns_content=None):
+        message = {"role": role, "content": content}
+        if sns_content:
+            message["sns_content"] = sns_content
+        st.session_state.messages.append(message)
 
     def get_api_key(self):
         return st.session_state.anthropic_api_key
