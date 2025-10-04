@@ -281,12 +281,12 @@ def run_app():
                 chat_history = st.session_state.get('messages', [])
 
                 # 인물/사건 감지 (influencer_name 및 chat_history 전달)
-                entity_needs_search, entity_search_term, is_daily_life = entity_detector.detect(
+                entity_needs_search, entity_search_term, is_daily_life, requests_content = entity_detector.detect(
                     question,
                     influencer_name,
                     chat_history
                 )
-                print(f"[EntityDetector] 검색 필요: {entity_needs_search} | 검색어: {entity_search_term} | 일상: {is_daily_life}")
+                print(f"[EntityDetector] 검색 필요: {entity_needs_search} | 검색어: {entity_search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content}")
                 needs_search = entity_needs_search
                 search_term = entity_search_term
 
@@ -297,10 +297,11 @@ def run_app():
                 current_date = datetime.now().strftime("%Y년 %m월 %d일")
                 print(f"[Current Date] {current_date}")
 
-                # SearchService 초기화 (SerpAPI 키 필요)
+                # SearchService 초기화 (SerpAPI 키 및 YouTube API 키 필요)
                 serpapi_key = session_manager.get_serpapi_key()
+                youtube_key = st.session_state.get('youtube_api_key', None)
                 if serpapi_key:
-                    search_service = SearchService(api_key=serpapi_key)
+                    search_service = SearchService(api_key=serpapi_key, youtube_api_key=youtube_key)
                     print(f"[SearchService] 초기화 완료")
 
                     # 일상 관련 질문일 때만 SNS 콘텐츠 검색
@@ -404,8 +405,8 @@ def run_app():
                         spinner_placeholder.markdown(part)
                         spinner_context.__exit__(None, None, None)
 
-                        # SNS 콘텐츠가 있으면 첫 번째 메시지 아래에 표시
-                        if sns_content and sns_content.get("found"):
+                        # SNS 콘텐츠가 있고, 사용자가 명시적으로 콘텐츠를 요청했을 때만 표시
+                        if sns_content and sns_content.get("found") and requests_content:
                             platform = sns_content.get("platform", "")
                             url = sns_content.get("url", "")
                             thumbnail = sns_content.get("thumbnail", "")

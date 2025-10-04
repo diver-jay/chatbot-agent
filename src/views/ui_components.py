@@ -81,6 +81,14 @@ class StreamlitUIComponent(UIComponent):
                 help="검색 기능 사용을 위한 SerpAPI 키를 입력하세요"
             )
 
+            # YouTube API 키 입력
+            youtube_api_key = st.text_input(
+                "YouTube API Key",
+                type="password",
+                value=st.session_state.get('youtube_api_key', ''),
+                help="YouTube 검색 기능 사용을 위한 YouTube Data API v3 키를 입력하세요"
+            )
+
             # API 키 등록 버튼
             if st.button("API 키 등록"):
                 if anthropic_api_key:
@@ -90,6 +98,9 @@ class StreamlitUIComponent(UIComponent):
                 if serpapi_api_key:
                     st.session_state.serpapi_api_key = serpapi_api_key
                     st.success("SerpAPI 키가 등록되었습니다")
+                if youtube_api_key:
+                    st.session_state.youtube_api_key = youtube_api_key
+                    st.success("YouTube API 키가 등록되었습니다")
 
             # 대화 초기화 버튼
             if st.button("대화 초기화"):
@@ -160,8 +171,8 @@ class StreamlitUIComponent(UIComponent):
         typing_placeholder = st.empty()
         typing_placeholder.markdown('<div class="wave-loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>', unsafe_allow_html=True)
 
-        # 답변 길이에 따라 동적으로 대기 시간 계산 (최소 4초, 최대 10초)
-        typing_delay = min(max(4, char_count / 50), 10)  # 50자당 1초, 최소 4초, 최대 10초
+        # 답변 길이에 따라 동적으로 대기 시간 계산 (최소 0.5초, 최대 2초)
+        typing_delay = min(max(0.5, char_count / 200), 2)  # 200자당 1초, 최소 0.5초, 최대 2초
         time.sleep(typing_delay)
 
         return chat_message_context, typing_placeholder
