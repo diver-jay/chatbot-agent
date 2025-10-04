@@ -277,8 +277,15 @@ def run_app():
                 search_term = term_search_term
                 is_daily_life = False  # 신조어는 일상 질문 아님
             else:
-                # 인물/사건 감지 (influencer_name 전달)
-                entity_needs_search, entity_search_term, is_daily_life = entity_detector.detect(question, influencer_name)
+                # 대화 히스토리 가져오기
+                chat_history = st.session_state.get('messages', [])
+
+                # 인물/사건 감지 (influencer_name 및 chat_history 전달)
+                entity_needs_search, entity_search_term, is_daily_life = entity_detector.detect(
+                    question,
+                    influencer_name,
+                    chat_history
+                )
                 print(f"[EntityDetector] 검색 필요: {entity_needs_search} | 검색어: {entity_search_term} | 일상: {is_daily_life}")
                 needs_search = entity_needs_search
                 search_term = entity_search_term
@@ -299,42 +306,31 @@ def run_app():
                     # 일상 관련 질문일 때만 SNS 콘텐츠 검색
                     if is_daily_life:
                         print(f"[SNS Search] ✅ 일상 질문 감지 → SNS 검색 시작")
-                        # SNS 콘텐츠 검색 시도
-                        sns_content = search_service.search_sns_content(search_term)
+
+                        # 관련성 검증을 위한 SNSRelevanceChecker 초기화
+                        relevance_checker = SNSRelevanceChecker(chat_model)
+
+                        # SNS 콘텐츠 검색 (관련성 검증 포함)
+                        sns_content = search_service.search_sns_content(
+                            query=search_term,
+                            user_question=question,
+                            relevance_checker=relevance_checker
+                        )
                         print(f"[SNS Search] 검색어: {search_term}")
                         print(f"[SNS Search] 검색 결과: {sns_content}")
 
-                        # SNS 콘텐츠를 찾았으면 관련성 검증
+                        # SNS 콘텐츠를 찾았으면 (이미 관련성 검증 완료됨)
                         if sns_content and sns_content.get("found"):
-                            print(f"[Search] SNS 콘텐츠 발견 → 관련성 검증 시작")
-
-                            # 관련성 검증
-                            relevance_checker = SNSRelevanceChecker(chat_model)
-                            is_relevant, reason = relevance_checker.check_relevance(
-                                user_question=question,
-                                sns_title=sns_content.get("title", ""),
-                                platform=sns_content.get("platform", "")
-                            )
-
-                            if is_relevant:
-                                print(f"[Search] ✅ SNS 콘텐츠 관련성 확인 → SNS 정보 사용")
-                                # SNS 게시물 정보만 컨텍스트로 전달
-                                platform_name = "Instagram" if sns_content.get("platform") == "instagram" else "YouTube"
-                                sns_title = sns_content.get("title", "")
-                                search_context = f"\n\n[{platform_name} 게시물 정보]\n{sns_title}\n\n[참고] 오늘 날짜: {current_date}\n"
-                                print(f"[Search] SNS 컨텍스트: {search_context}")
-                            else:
-                                print(f"[Search] ❌ SNS 콘텐츠 관련성 없음 → 일반 검색으로 전환")
-                                print(f"[Search] 이유: {reason}")
-                                # SNS 무효화하고 일반 검색 수행
-                                sns_content = None
-                                search_results = search_service.search(search_term)
-                                search_summary = search_service.extract_summary(search_results)
-                                search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n\n[참고] 오늘 날짜: {current_date}\n"
-                                print(f"[Search] 검색 완료: {search_context}")
+                            print(f"[Search] ✅ 관련 SNS 콘텐츠 발견 → SNS 정보 사용")
+                            # SNS 게시물 정보만 컨텍스트로 전달
+                            platform_name = "Instagram" if sns_content.get("platform") == "instagram" else "YouTube"
+                            sns_title = sns_content.get("title", "")
+                            search_context = f"\n\n[{platform_name} 게시물 정보]\n{sns_title}\n\n[참고] 오늘 날짜: {current_date}\n"
+                            print(f"[Search] SNS 컨텍스트: {search_context}")
                         else:
                             # SNS를 못 찾았으면 일반 검색 수행
                             print(f"[Search] SNS 콘텐츠 없음 → 일반 검색 수행")
+                            sns_content = None
                             search_results = search_service.search(search_term)
                             search_summary = search_service.extract_summary(search_results)
                             search_context = f"\n\n[검색 정보: '{search_term}']\n{search_summary}\n\n[참고] 오늘 날짜: {current_date}\n"

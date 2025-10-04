@@ -16,13 +16,14 @@ class EntityDetector:
         """
         self.chat_model = chat_model
 
-    def detect(self, user_message: str, influencer_name: Optional[str] = None) -> Tuple[bool, Optional[str], bool]:
+    def detect(self, user_message: str, influencer_name: Optional[str] = None, chat_history: Optional[list] = None) -> Tuple[bool, Optional[str], bool]:
         """
         사용자 메시지에서 검색이 필요한 인물/사건을 감지합니다.
 
         Args:
             user_message: 사용자 입력 메시지
             influencer_name: 인플루언서 이름 (선택사항)
+            chat_history: 대화 히스토리 (선택사항) - [{"role": "human/assistant", "content": "..."}, ...]
 
         Returns:
             (검색 필요 여부, 검색할 용어, 일상 관련 여부) 튜플
@@ -34,8 +35,25 @@ class EntityDetector:
             with open(prompt_template_path, "r", encoding="utf-8") as f:
                 prompt_template = f.read()
 
+            # 대화 히스토리를 문자열로 포맷팅
+            history_context = ""
+            if chat_history:
+                # 최근 4개 메시지만 사용 (2턴)
+                recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
+                history_lines = []
+                for msg in recent_history:
+                    role = "사용자" if msg.get("role") == "human" else "AI"
+                    content = msg.get("content", "")
+                    history_lines.append(f"{role}: {content}")
+                history_context = "\n".join(history_lines)
+
             # 템플릿에 변수 주입
-            detection_prompt = prompt_template.format(user_message=user_message)
+            if history_context:
+                detection_prompt = prompt_template.format(
+                    user_message=f"[이전 대화]\n{history_context}\n\n[현재 질문]\n{user_message}"
+                )
+            else:
+                detection_prompt = prompt_template.format(user_message=user_message)
 
             # LLM을 사용하여 인물/사건 감지
             response = self.chat_model.invoke([HumanMessage(content=detection_prompt)])

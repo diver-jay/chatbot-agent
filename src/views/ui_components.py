@@ -81,13 +81,15 @@ class StreamlitUIComponent(UIComponent):
                 help="검색 기능 사용을 위한 SerpAPI 키를 입력하세요"
             )
 
-            # API 키 저장
-            if anthropic_api_key:
-                st.session_state.anthropic_api_key = anthropic_api_key
-                st.session_state.api_key_submitted = True
-
-            if serpapi_api_key:
-                st.session_state.serpapi_api_key = serpapi_api_key
+            # API 키 등록 버튼
+            if st.button("API 키 등록"):
+                if anthropic_api_key:
+                    st.session_state.anthropic_api_key = anthropic_api_key
+                    st.session_state.api_key_submitted = True
+                    st.success("Anthropic API 키가 등록되었습니다")
+                if serpapi_api_key:
+                    st.session_state.serpapi_api_key = serpapi_api_key
+                    st.success("SerpAPI 키가 등록되었습니다")
 
             # 대화 초기화 버튼
             if st.button("대화 초기화"):
