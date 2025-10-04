@@ -4,7 +4,7 @@ AI를 사용하여 인플루언서 이름을 분석하고 적절한 Tone 템플�
 """
 
 from typing import Tuple, Optional
-from search_service import SearchService
+from src.services.search_service import SearchService
 
 
 class ToneSelector:
@@ -16,7 +16,7 @@ class ToneSelector:
     TONE_TEMPLATES = {
         "influencer_20s": "prompts/tone_influencer_20s.md",
         "celebrity_20s": "prompts/tone_celebrity_20s.md",
-        "mentor": "prompts/converstation_prompt.md"  # 기본 멘토/박사님 스타일
+        "mentor": "prompts/tone_mentor.md"  # 기본 멘토/박사님 스타일
     }
 
     def __init__(self, chat_model, serpapi_key: Optional[str] = None):

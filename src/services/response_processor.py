@@ -1,6 +1,6 @@
 import re
 from langchain_core.messages import HumanMessage
-from prompt_loader import SplitPromptLoader
+from src.services.prompt_loader import SplitPromptLoader
 
 
 # 답변을 맥락 단위로 분할하는 함수

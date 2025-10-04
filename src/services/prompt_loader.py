@@ -27,12 +27,12 @@ class ToneAwarePromptLoader(PromptLoader):
     다양한 Tone 스타일의 프롬프트 파일을 지원합니다.
 
     예시:
-    - prompts/converstation_prompt.md (기본 멘토 스타일, 톤앤매너 포함)
+    - prompts/tone_mentor.md (기본 멘토 스타일, 톤앤매너 포함)
     - prompts/tone_influencer_20s.md (20대 인플루언서 스타일)
     - prompts/tone_celebrity_20s.md (20대 연예인 스타일)
     """
 
-    def __init__(self, prompt_path="prompts/converstation_prompt.md", influencer_name=None, persona_context=None):
+    def __init__(self, prompt_path="prompts/tone_mentor.md", influencer_name=None, persona_context=None):
         self.prompt_path = prompt_path
         self.influencer_name = influencer_name
         self.persona_context = persona_context
