@@ -69,24 +69,24 @@ class StreamlitUIComponent(UIComponent):
             anthropic_api_key = st.text_input(
                 "Anthropic API Key",
                 type="password",
-                value=st.session_state.get('anthropic_api_key', ''),
-                help="Claude API 사용을 위한 Anthropic API 키를 입력하세요"
+                value=st.session_state.get("anthropic_api_key", ""),
+                help="Claude API 사용을 위한 Anthropic API 키를 입력하세요",
             )
 
             # SerpAPI 키 입력
             serpapi_api_key = st.text_input(
                 "SerpAPI Key",
                 type="password",
-                value=st.session_state.get('serpapi_api_key', ''),
-                help="검색 기능 사용을 위한 SerpAPI 키를 입력하세요"
+                value=st.session_state.get("serpapi_api_key", ""),
+                help="검색 기능 사용을 위한 SerpAPI 키를 입력하세요",
             )
 
             # YouTube API 키 입력
             youtube_api_key = st.text_input(
                 "YouTube API Key",
                 type="password",
-                value=st.session_state.get('youtube_api_key', ''),
-                help="YouTube 검색 기능 사용을 위한 YouTube Data API v3 키를 입력하세요"
+                value=st.session_state.get("youtube_api_key", ""),
+                help="YouTube 검색 기능 사용을 위한 YouTube Data API v3 키를 입력하세요",
             )
 
             # API 키 등록 버튼
@@ -105,7 +105,9 @@ class StreamlitUIComponent(UIComponent):
             # 대화 초기화 버튼
             if st.button("대화 초기화"):
                 st.session_state.messages = []
-                st.session_state.chat_history = StreamlitChatMessageHistory(key="chat_messages")
+                st.session_state.chat_history = StreamlitChatMessageHistory(
+                    key="chat_messages"
+                )
                 st.rerun()
 
             st.divider()
@@ -117,18 +119,20 @@ class StreamlitUIComponent(UIComponent):
 
         with col1:
             st.title("💬")
-            st.markdown("""친한 친구와 대화하는 것처럼 편안하게 이야기해보세요!
-        어떤 일상 이야기든 환영이에요 😊""")
+            st.markdown(
+                """친한 친구와 대화하는 것처럼 편안하게 이야기해보세요!
+        어떤 일상 이야기든 환영이에요 😊"""
+            )
 
     def display_previous_messages(self):
         """저장된 모든 메시지를 표시합니다."""
         for message in st.session_state.messages:
-            with st.chat_message(message['role']):
-                st.markdown(message['content'])
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
                 # 어시스턴트 메시지에 이미지가 있으면 표시
-                if message['role'] == 'assistant' and 'image' in message:
-                    if os.path.exists(message['image']):
-                        st.image(message['image'], width=200, caption="😊")
+                if message["role"] == "assistant" and "image" in message:
+                    if os.path.exists(message["image"]):
+                        st.image(message["image"], width=200, caption="😊")
 
     def get_chat_input(self, placeholder: str = ""):
         """채팅 입력을 받아옵니다."""
@@ -136,43 +140,51 @@ class StreamlitUIComponent(UIComponent):
 
     def display_user_message(self, question: str):
         """사용자 메시지를 화면에 표시합니다."""
-        with st.chat_message('human', avatar=None):
+        with st.chat_message("human", avatar=None):
             st.markdown(question)
 
     def display_assistant_message(self, message: str):
         """어시스턴트 메시지를 화면에 표시합니다."""
-        with st.chat_message('assistant'):
+        with st.chat_message("assistant"):
             st.markdown(message)
 
     def display_assistant_error(self, error_msg: str):
         """어시스턴트 에러 메시지를 화면에 표시합니다."""
-        with st.chat_message('assistant'):
+        with st.chat_message("assistant"):
             st.error(error_msg)
 
     def display_assistant_warning(self, warning_msg: str):
         """어시스턴트 경고 메시지를 화면에 표시합니다."""
-        with st.chat_message('assistant'):
+        with st.chat_message("assistant"):
             st.warning(warning_msg)
 
     def create_assistant_spinner(self):
         """어시스턴트 메시지 영역에 스피너를 생성하고 placeholder를 반환합니다."""
-        chat_message_context = st.chat_message('assistant')
+        chat_message_context = st.chat_message("assistant")
         chat_message_context.__enter__()
         spinner_placeholder = st.empty()
-        spinner_placeholder.markdown('<div class="wave-loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>', unsafe_allow_html=True)
+        spinner_placeholder.markdown(
+            '<div class="wave-loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>',
+            unsafe_allow_html=True,
+        )
         return chat_message_context, spinner_placeholder
 
     def display_typing_animation(self, char_count: int):
         """타이핑 애니메이션을 표시하고 placeholder를 반환합니다."""
         import time
 
-        chat_message_context = st.chat_message('assistant')
+        chat_message_context = st.chat_message("assistant")
         chat_message_context.__enter__()
         typing_placeholder = st.empty()
-        typing_placeholder.markdown('<div class="wave-loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>', unsafe_allow_html=True)
+        typing_placeholder.markdown(
+            '<div class="wave-loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>',
+            unsafe_allow_html=True,
+        )
 
         # 답변 길이에 따라 동적으로 대기 시간 계산 (최소 0.5초, 최대 2초)
-        typing_delay = min(max(0.5, char_count / 200), 2)  # 200자당 1초, 최소 0.5초, 최대 2초
+        typing_delay = min(
+            max(0.5, char_count / 200), 2
+        )  # 200자당 1초, 최소 0.5초, 최대 2초
         time.sleep(typing_delay)
 
         return chat_message_context, typing_placeholder

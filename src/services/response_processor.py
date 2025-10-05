@@ -21,7 +21,7 @@ def split_response_by_context(response, chat_model):
         split_text = split_result.content
 
         # [[SPLIT_N]] 마커를 기준으로 분할
-        parts = re.split(r'\[\[SPLIT_\d+\]\]', split_text)
+        parts = re.split(r"\[\[SPLIT_\d+\]\]", split_text)
         # 빈 문자열 제거 및 공백 정리
         parts = [part.strip() for part in parts if part.strip()]
 

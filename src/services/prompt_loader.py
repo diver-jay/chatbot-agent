@@ -32,7 +32,12 @@ class ToneAwarePromptLoader(PromptLoader):
     - prompts/tone_celebrity_20s.md (20대 연예인 스타일)
     """
 
-    def __init__(self, prompt_path="prompts/tone_mentor.md", influencer_name=None, persona_context=None):
+    def __init__(
+        self,
+        prompt_path="prompts/tone_mentor.md",
+        influencer_name=None,
+        persona_context=None,
+    ):
         self.prompt_path = prompt_path
         self.influencer_name = influencer_name
         self.persona_context = persona_context
@@ -58,7 +63,7 @@ class ToneAwarePromptLoader(PromptLoader):
                 [
                     ("system", prompt_content),
                     MessagesPlaceholder(variable_name="chat_history"),
-                    ("human", "{input}")
+                    ("human", "{input}"),
                 ]
             )
         except FileNotFoundError as e:

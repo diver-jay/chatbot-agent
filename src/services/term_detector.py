@@ -1,6 +1,7 @@
 """
 사용자 입력에서 신조어/모르는 용어를 감지하는 모듈
 """
+
 from typing import Tuple, Optional
 import json
 from langchain_core.messages import HumanMessage
@@ -56,7 +57,9 @@ class TermDetector:
 
             # JSON 코드 블록 제거
             if response_text.startswith("```json"):
-                response_text = response_text.replace("```json", "").replace("```", "").strip()
+                response_text = (
+                    response_text.replace("```json", "").replace("```", "").strip()
+                )
             elif response_text.startswith("```"):
                 response_text = response_text.replace("```", "").strip()
 
@@ -65,7 +68,9 @@ class TermDetector:
             needs_search = result.get("needs_search", False)
             search_term = result.get("search_term", None)
 
-            print(f"[TermDetector] needs_search={needs_search}, term={search_term}, reason={result.get('reason', '')}")
+            print(
+                f"[TermDetector] needs_search={needs_search}, term={search_term}, reason={result.get('reason', '')}"
+            )
 
             return needs_search, search_term
 

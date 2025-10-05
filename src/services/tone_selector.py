@@ -16,7 +16,7 @@ class ToneSelector:
     TONE_TEMPLATES = {
         "influencer_20s": "prompts/tone_influencer_20s.md",
         "celebrity_20s": "prompts/tone_celebrity_20s.md",
-        "mentor": "prompts/tone_mentor.md"  # 기본 멘토/박사님 스타일
+        "mentor": "prompts/tone_mentor.md",  # 기본 멘토/박사님 스타일
     }
 
     def __init__(self, chat_model, serpapi_key: Optional[str] = None):
@@ -73,10 +73,10 @@ class ToneSelector:
         Returns:
             str: tone_type ("influencer_20s", "celebrity_20s", "mentor")
         """
-        for line in ai_response.split('\n'):
-            if '카테고리:' in line:
-                tone_type = line.split('카테고리:')[1].strip()
-                tone_type = tone_type.replace('[', '').replace(']', '').strip()
+        for line in ai_response.split("\n"):
+            if "카테고리:" in line:
+                tone_type = line.split("카테고리:")[1].strip()
+                tone_type = tone_type.replace("[", "").replace("]", "").strip()
 
                 if tone_type in self.TONE_TEMPLATES:
                     return tone_type
@@ -108,8 +108,7 @@ class ToneSelector:
                 prompt_template = f.read()
 
             persona_extraction_prompt = prompt_template.format(
-                influencer_name=influencer_name,
-                search_summary=search_summary
+                influencer_name=influencer_name, search_summary=search_summary
             )
 
             response = self.chat_model.invoke(persona_extraction_prompt)

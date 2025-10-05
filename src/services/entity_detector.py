@@ -1,6 +1,7 @@
 """
 사용자 입력에서 특정 인물/사건을 감지하는 모듈
 """
+
 from typing import Tuple, Optional
 import json
 from langchain_core.messages import HumanMessage
@@ -16,7 +17,9 @@ class EntityDetector:
         """
         self.chat_model = chat_model
 
-    def _check_content_request(self, user_message: str, chat_history: Optional[list] = None) -> bool:
+    def _check_content_request(
+        self, user_message: str, chat_history: Optional[list] = None
+    ) -> bool:
         """
         AI를 사용하여 사용자가 영상/사진/링크 등 콘텐츠를 명시적으로 요청했는지 판단합니다.
 
@@ -31,7 +34,9 @@ class EntityDetector:
             # 최근 대화 히스토리 포맷팅
             history_context = ""
             if chat_history:
-                recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
+                recent_history = (
+                    chat_history[-4:] if len(chat_history) > 4 else chat_history
+                )
                 history_lines = []
                 for msg in recent_history:
                     role = "사용자" if msg.get("role") == "human" else "AI"
@@ -86,7 +91,9 @@ JSON 형식으로만 응답하세요:
 
             # JSON 코드 블록 제거
             if response_text.startswith("```json"):
-                response_text = response_text.replace("```json", "").replace("```", "").strip()
+                response_text = (
+                    response_text.replace("```json", "").replace("```", "").strip()
+                )
             elif response_text.startswith("```"):
                 response_text = response_text.replace("```", "").strip()
 
@@ -94,7 +101,9 @@ JSON 형식으로만 응답하세요:
             requests_content = result.get("requests_content", False)
             reason = result.get("reason", "")
 
-            print(f"[Content Request Check] 콘텐츠 요청: {requests_content} | 이유: {reason}")
+            print(
+                f"[Content Request Check] 콘텐츠 요청: {requests_content} | 이유: {reason}"
+            )
 
             return requests_content
 
@@ -103,7 +112,12 @@ JSON 형식으로만 응답하세요:
             # 오류 발생 시 안전하게 False 반환 (콘텐츠 보여주지 않음)
             return False
 
-    def detect(self, user_message: str, influencer_name: Optional[str] = None, chat_history: Optional[list] = None) -> Tuple[bool, Optional[str], bool, bool]:
+    def detect(
+        self,
+        user_message: str,
+        influencer_name: Optional[str] = None,
+        chat_history: Optional[list] = None,
+    ) -> Tuple[bool, Optional[str], bool, bool]:
         """
         사용자 메시지에서 검색이 필요한 인물/사건을 감지합니다.
 
@@ -126,7 +140,9 @@ JSON 형식으로만 응답하세요:
             history_context = ""
             if chat_history:
                 # 최근 4개 메시지만 사용 (2턴)
-                recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
+                recent_history = (
+                    chat_history[-4:] if len(chat_history) > 4 else chat_history
+                )
                 history_lines = []
                 for msg in recent_history:
                     role = "사용자" if msg.get("role") == "human" else "AI"
@@ -150,7 +166,9 @@ JSON 형식으로만 응답하세요:
 
             # JSON 코드 블록 제거
             if response_text.startswith("```json"):
-                response_text = response_text.replace("```json", "").replace("```", "").strip()
+                response_text = (
+                    response_text.replace("```json", "").replace("```", "").strip()
+                )
             elif response_text.startswith("```"):
                 response_text = response_text.replace("```", "").strip()
 
@@ -172,7 +190,9 @@ JSON 형식으로만 응답하세요:
                 elif influencer_name.lower() not in search_term.lower():
                     search_term = f"{influencer_name} {search_term}"
 
-            print(f"[EntityDetector] 🔍 검색 필요: {needs_search} | 검색어: {search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content} | 판단 근거: {result.get('reason', 'N/A')}")
+            print(
+                f"[EntityDetector] 🔍 검색 필요: {needs_search} | 검색어: {search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content} | 판단 근거: {result.get('reason', 'N/A')}"
+            )
 
             return needs_search, search_term, is_daily_life, requests_content
 

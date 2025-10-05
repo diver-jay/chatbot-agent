@@ -1,6 +1,7 @@
 """
 SNS 게시물과 사용자 질문의 관련성을 검증하는 모듈
 """
+
 from typing import Tuple
 import json
 from langchain_core.messages import HumanMessage
@@ -16,7 +17,9 @@ class SNSRelevanceChecker:
         """
         self.chat_model = chat_model
 
-    def check_relevance(self, user_question: str, sns_title: str, platform: str, search_term: str = "") -> Tuple[bool, str]:
+    def check_relevance(
+        self, user_question: str, sns_title: str, platform: str, search_term: str = ""
+    ) -> Tuple[bool, str]:
         """
         사용자 질문과 SNS 게시물의 관련성을 판단합니다.
 
@@ -101,7 +104,9 @@ class SNSRelevanceChecker:
 
             # JSON 코드 블록 제거
             if response_text.startswith("```json"):
-                response_text = response_text.replace("```json", "").replace("```", "").strip()
+                response_text = (
+                    response_text.replace("```json", "").replace("```", "").strip()
+                )
             elif response_text.startswith("```"):
                 response_text = response_text.replace("```", "").strip()
 
