@@ -2,8 +2,7 @@ from datetime import datetime
 from typing import Tuple, Optional, Dict, Any
 
 from src.utils.decorators import retry_on_error, log_search_execution
-from src.agents.term_detect_agent import TermDetectAgent
-from src.agents.topic_detect_agent import TopicDetectAgent
+from src.agents.question_analyzer import QuestionAnalyzer
 from src.services.search_service import SearchService
 from src.agents.sns_relevance_check_agent import SNSRelevanceCheckAgent
 from src.utils.date_utils import get_formatted_date
@@ -19,8 +18,8 @@ class SearchOrchestrator:
         self.chat_model = chat_model
         self.session_manager = session_manager
 
-        self.term_detect_agent = TermDetectAgent(chat_model)
-        self.topic_detect_agent = TopicDetectAgent(chat_model, session_manager)
+        # 통합 질문 분석 에이전트
+        self.question_analyzer = QuestionAnalyzer(chat_model, session_manager)
         self.relevance_check_agent = SNSRelevanceCheckAgent(chat_model)
 
         # SearchService 초기화
@@ -36,7 +35,7 @@ class SearchOrchestrator:
         self._analysis_result = AnalysisResult()
 
     def analyze_question(self, question: str, influencer_name: str):
-        """분석 유형을 결정하고 해당 분석 메서드를 호출합니다."""
+        """통합 질문 분석을 수행합니다 (단일 LLM 호출)."""
         log(self.__class__.__name__, f"\n{'='*60}")
         log(self.__class__.__name__, f"사용자 질문: {question}")
         log(self.__class__.__name__, f"인플루언서 이름: {influencer_name}")
@@ -45,12 +44,25 @@ class SearchOrchestrator:
         # 항상 새로운 분석을 위해 상태 초기화
         self._analysis_result = AnalysisResult()
 
-        term_detection_result = self.term_detect_agent.act(user_message=question)
+        # 🚀 통합 분석 (단일 LLM 호출로 모든 정보 추출)
+        analysis = self.question_analyzer.act(
+            user_message=question,
+            influencer_name=influencer_name
+        )
 
-        if term_detection_result.needs_search:
-            self._handle_term_search(term_detection_result, question)
-        else:
-            self._handle_topic_search(question, influencer_name)
+        # analysis_type을 SearchType enum으로 변환
+        type_mapping = {
+            "TERM_SEARCH": SearchType.TERM_SEARCH,
+            "SNS_SEARCH": SearchType.SNS_SEARCH,
+            "GENERAL_SEARCH": SearchType.GENERAL_TOPIC_SEARCH,
+            "NO_SEARCH": SearchType.NO_SEARCH
+        }
+
+        self._analysis_result.search_type = type_mapping.get(
+            analysis.analysis_type, SearchType.NO_SEARCH
+        )
+        self._analysis_result.search_term = analysis.search_term
+        self._analysis_result.is_media_requested = analysis.is_media_requested
 
         log(self.__class__.__name__, f"최종 분석 상태: {self._analysis_result}")
 
@@ -104,46 +116,6 @@ class SearchOrchestrator:
     def is_media_requested(self) -> bool:
         """콘텐츠 요청 여부를 반환합니다."""
         return self._analysis_result.is_media_requested
-
-    def _handle_term_search(self, term_detection_result, question: str):
-        """Handles the analysis logic when a term/slang is detected."""
-        log(self.__class__.__name__, "✅ 신조어 검색 모드 활성화")
-        self._analysis_result.search_type = SearchType.TERM_SEARCH
-        self._analysis_result.search_term = (
-            f"{term_detection_result.search_term} 뜻"
-            if term_detection_result.search_term
-            else ""
-        )
-        log(self.__class__.__name__, f"생성된 검색어: '{self._analysis_result.search_term}'")
-
-        self._analysis_result.is_media_requested = self.topic_detect_agent.is_media_requested(question)
-        log(self.__class__.__name__, f"미디어 요청 여부 확인: {self._analysis_result.is_media_requested}")
-
-    def _handle_topic_search(self, question: str, influencer_name: str):
-        """Handles the analysis logic for general topics (person/event)."""
-        log(self.__class__.__name__, "➡️ TopicDetectAgent로 넘어감")
-
-        detection_result = self.topic_detect_agent.act(
-            user_message=question, influencer_name=influencer_name
-        )
-        
-        if detection_result.needs_search:
-            self._analysis_result.search_term = detection_result.search_term
-            if detection_result.is_daily_life:
-                self._analysis_result.search_type = SearchType.SNS_SEARCH
-            else:
-                self._analysis_result.search_type = SearchType.GENERAL_TOPIC_SEARCH
-        else:
-            self._analysis_result.search_type = SearchType.NO_SEARCH
-            self._analysis_result.search_term = None
-
-        self._analysis_result.is_media_requested = self.topic_detect_agent.is_media_requested(question)
-
-        log(
-            self.__class__.__name__,
-            f"TopicDetectAgent 결과 - search_type: {self._analysis_result.search_type.name}, 검색어: {self._analysis_result.search_term}"
-        )
-        log(self.__class__.__name__, f"TopicDetectAgent 결과 - 미디어 요청: {self._analysis_result.is_media_requested}")
 
     @retry_on_error(max_attempts=2, delay=2.0)
     def _search_general_context(
