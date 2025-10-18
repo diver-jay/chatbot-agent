@@ -2,10 +2,10 @@ from datetime import datetime
 from typing import Tuple, Optional, Dict, Any
 
 from src.utils.decorators import retry_on_error, log_search_execution
-from src.services.term_detect_agent import TermDetectAgent
+from src.agents.term_detect_agent import TermDetectAgent
 from src.services.entity_detector import EntityDetector
 from src.services.search_service import SearchService
-from src.services.sns_relevance_checker import SNSRelevanceChecker
+from src.agents.sns_relevance_check_agent import SNSRelevanceCheckAgent
 
 
 class SearchOrchestrator:
@@ -19,8 +19,8 @@ class SearchOrchestrator:
         self.term_detect_agent = TermDetectAgent(chat_model)
         self.entity_detector = EntityDetector(chat_model, session_manager)
 
-        # SNSRelevanceChecker 초기화
-        self.relevance_checker = SNSRelevanceChecker(chat_model)
+        # SNSRelevanceCheckAgent 초기화
+        self.relevance_check_agent = SNSRelevanceCheckAgent(chat_model)
 
         # SearchService 초기화
         serpapi_key = session_manager.get_serpapi_key()
@@ -130,7 +130,7 @@ class SearchOrchestrator:
         sns_content = self.search_service.search_sns_content(
             query=search_term,
             user_question=question,
-            relevance_checker=self.relevance_checker,
+            relevance_checker=self.relevance_check_agent,
         )
         print(f"[SNS Search] 검색어: {search_term}")
         print(f"[SNS Search] 검색 결과: {sns_content}")

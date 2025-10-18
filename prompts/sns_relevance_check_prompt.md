@@ -1,39 +1,3 @@
-"""
-SNS 게시물과 사용자 질문의 관련성을 검증하는 모듈
-"""
-
-from typing import Tuple
-import json
-from langchain_core.messages import HumanMessage
-
-
-class SNSRelevanceChecker:
-    """SNS 게시물이 사용자 질문과 관련있는지 판단하는 클래스"""
-
-    def __init__(self, chat_model):
-        """
-        Args:
-            chat_model: LangChain 채팅 모델 인스턴스
-        """
-        self.chat_model = chat_model
-
-    def check_relevance(
-        self, user_question: str, sns_title: str, platform: str, search_term: str = ""
-    ) -> Tuple[bool, str]:
-        """
-        사용자 질문과 SNS 게시물의 관련성을 판단합니다.
-
-        Args:
-            user_question: 사용자의 질문
-            sns_title: SNS 게시물 제목/설명
-            platform: SNS 플랫폼 (instagram/youtube)
-            search_term: 검색에 사용된 검색어 (인물/주제 포함)
-
-        Returns:
-            (관련성 있음 여부, 판단 이유) 튜플
-        """
-        try:
-            prompt = f"""
 당신은 사용자 질문과 SNS 게시물의 관련성을 판단하는 전문가입니다.
 
 ## 사용자 질문
@@ -97,28 +61,3 @@ class SNSRelevanceChecker:
     "reason": "판단 이유"
 }}
 ```
-"""
-
-            response = self.chat_model.invoke([HumanMessage(content=prompt)])
-            response_text = response.content.strip()
-
-            # JSON 코드 블록 제거
-            if response_text.startswith("```json"):
-                response_text = (
-                    response_text.replace("```json", "").replace("```", "").strip()
-                )
-            elif response_text.startswith("```"):
-                response_text = response_text.replace("```", "").strip()
-
-            result = json.loads(response_text)
-            is_relevant = result.get("is_relevant", False)
-            reason = result.get("reason", "")
-
-            print(f"[SNS Relevance] 관련성: {is_relevant} | 이유: {reason}")
-
-            return is_relevant, reason
-
-        except Exception as e:
-            print(f"[SNS Relevance] 검증 중 오류: {e}")
-            # 오류 발생 시 안전하게 관련있다고 판단 (false negative 방지)
-            return True, "검증 오류로 인해 기본값으로 관련있음 처리"

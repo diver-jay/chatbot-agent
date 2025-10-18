@@ -4,15 +4,15 @@ from datetime import datetime
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # 분리된 모듈 임포트
-from src.services.prompt_loader import ToneAwarePromptLoader
+from src.agents.prompt_loader import ToneAwarePromptLoader
 from src.models.model_factory import ChatModelFactory
-from src.services.response_splitter import ResponseSplitter
+from src.agents.response_split_agent import ResponseSplitAgent
 
 # from src.services.image_selector import select_image_for_context
 from src.models.session_manager import StreamlitSessionManager
 from src.views.ui_components import StreamlitUIComponent
-from src.services.tone_selector import ToneSelector
-from src.services.persona_extractor import PersonaExtractor
+from src.agents.tone_select_agent import ToneSelectAgent
+from src.agents.persona_extract_agent import PersonaExtractAgent
 from src.services.search_orchestrator import SearchOrchestrator
 
 # SessionManager 및 UIComponent 인스턴스 생성
@@ -133,18 +133,18 @@ def setup_influencer_persona(influencer_name: str):
     chat_model = load_cached_chat_model(
         "claude-3-7-sonnet-latest", session_manager.get_api_key()
     )
-    tone_selector = ToneSelector(chat_model)
-    persona_extractor = PersonaExtractor(chat_model, session_manager.get_serpapi_key())
+    tone_select_agent = ToneSelectAgent(chat_model)
+    persona_extract_agent = PersonaExtractAgent(chat_model, session_manager.get_serpapi_key())
 
     # Tone 선택 (로그 자동 출력됨)
-    tone_type, tone_file_path = tone_selector.select_tone(influencer_name)
+    tone_file_path = tone_select_agent.act(influencer_name)
 
     # 페르소나 컨텍스트 검색
-    persona_context = persona_extractor.extract(influencer_name)
+    persona_context = persona_extract_agent.act(influencer_name)
 
     # 세션에 인플루언서 이름 및 Tone 정보 저장
     session_manager.save_influencer_setup(
-        influencer_name, tone_type, tone_file_path, persona_context
+        influencer_name, tone_file_path, persona_context
     )
 
 
@@ -324,8 +324,8 @@ def run_app():
     # SearchOrchestrator 초기화
     orchestrator = SearchOrchestrator(chat_model, session_manager)
 
-    # ResponseSplitter 초기화
-    response_splitter = ResponseSplitter(chat_model)
+    # ResponseSplitAgent 초기화
+    response_split_agent = ResponseSplitAgent(chat_model)
 
     # 선택된 Tone으로 대화 체인 구성
     tone_file_path = session_manager.get_tone_file_path()
@@ -374,7 +374,7 @@ def run_app():
                 )
 
                 # 3-2. 응답 분할
-                split_parts = response_splitter.split_by_context(response)
+                split_parts = response_split_agent.act(response)
 
                 error_placeholder.empty()
 

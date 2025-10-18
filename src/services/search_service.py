@@ -320,7 +320,7 @@ class SearchService:
         Args:
             query: 검색어 (예: "인플루언서명 인스타그램 최근")
             user_question: 사용자의 원래 질문 (관련성 검증용)
-            relevance_checker: SNSRelevanceChecker 인스턴스 (관련성 검증용)
+            relevance_checker: SNSRelevanceCheckAgent 인스턴스 (관련성 검증용)
             has_recency_keyword: '최근', '요즘' 등의 시간 키워드가 포함되어 있는지 여부
 
         Returns:
@@ -405,13 +405,12 @@ class SearchService:
 
                     # 관련성 검증 (relevance_checker가 있고 user_question이 있을 때만)
                     if relevance_checker and user_question:
-                        is_relevant, reason = relevance_checker.check_relevance(
+                        is_relevant = relevance_checker.act(
                             user_question=user_question,
                             sns_title=title,
                             platform=platform,
                             search_term=query,
                         )
-                        print(f"[SNS Relevance] 관련성: {is_relevant} | 이유: {reason}")
 
                         if is_relevant:
                             print(

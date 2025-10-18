@@ -20,7 +20,6 @@ class SessionManager(ABC):
     def save_influencer_setup(
         self,
         influencer_name: str,
-        tone_type: str,
         tone_file_path: str,
         persona_context: str,
     ):
@@ -112,12 +111,10 @@ class StreamlitSessionManager(SessionManager):
     def save_influencer_setup(
         self,
         influencer_name: str,
-        tone_type: str,
         tone_file_path: str,
         persona_context: str,
     ):
         st.session_state.influencer_name = influencer_name
-        st.session_state.tone_type = tone_type
         st.session_state.tone_file_path = tone_file_path
         st.session_state.persona_context = persona_context
         st.session_state.setup_complete = True

@@ -1,6 +1,6 @@
 import json
 from langchain_core.messages import HumanMessage
-from src.services.prompt_loader import TermDetectionPromptLoader
+from src.agents.prompt_loader import TermDetectionPromptLoader
 
 
 class TermDetectAgent:

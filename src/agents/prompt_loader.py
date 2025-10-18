@@ -63,6 +63,20 @@ class PersonaExtractionPromptLoader(PromptLoader):
             raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
 
 
+class SNSRelevancePromptLoader(PromptLoader):
+    """SNS 게시물 관련성 검증을 위한 프롬프트 로더"""
+
+    def __init__(self, file_path="prompts/sns_relevance_check_prompt.md"):
+        self.file_path = file_path
+
+    def load(self):
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
+
+
 class ToneAwarePromptLoader(PromptLoader):
     """
     단일 프롬프트 파일을 로드하여 시스템 프롬프트를 생성하는 Loader.
