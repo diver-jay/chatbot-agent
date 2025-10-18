@@ -4,7 +4,8 @@ from datetime import datetime
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # 분리된 모듈 임포트
-from src.agents.prompt_loader import ToneAwarePromptLoader
+from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import MessagesPlaceholder
 from src.models.model_factory import ChatModelFactory
 from src.agents.response_split_agent import ResponseSplitAgent
 
@@ -108,19 +109,33 @@ def load_cached_chat_model(model_name, api_key):
 @st.cache_data()
 def load_cached_prompt(prompt_path, influencer_name=None, persona_context=None):
     """
-    지정된 tone 파일 경로로 프롬프트를 로드합니다.
-
-    Args:
-        prompt_path: tone 템플릿 파일 경로
-        influencer_name: 인플루언서 이름 (선택사항)
-        persona_context: 페르소나 컨텍스트 (선택사항)
+    지정된 tone 파일 경로로 프롬프트를 로드하고 페르소나를 주입합니다.
     """
-    loader = ToneAwarePromptLoader(
-        prompt_path=prompt_path,
-        influencer_name=influencer_name,
-        persona_context=persona_context,
-    )
-    return loader.load()
+    try:
+        # 프롬프트 파일 로드
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            prompt_content = f.read()
+
+        # 페르소나 정보 주입
+        if influencer_name:
+            persona_injection = f"\n\n**중요**: 당신은 '{influencer_name}' 본인입니다. 팬들이 '{influencer_name}님 팬이에요' 또는 '{influencer_name} 좋아해요'라고 말하면, {influencer_name}을 제3자로 언급하지 말고 본인의 시점('나')에서 답변하세요.\n"
+
+            # 페르소나 컨텍스트가 있으면 추가
+            if persona_context:
+                persona_injection += f"\n**당신의 배경 정보**:\n{persona_context}\n\n위 정보를 바탕으로 답변할 때 자연스럽게 활용하세요. 특히 일상 질문이나 최근 근황을 물어볼 때 이 정보를 참고하세요.\n"
+
+            prompt_content = prompt_content + persona_injection
+            print(f"[DEBUG] prompt_content:\n{prompt_content}\n")
+
+        return ChatPromptTemplate.from_messages(
+            [
+                ("system", prompt_content),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"프롬프트 파일을 찾을 수 없습니다: {e}")
 
 
 def setup_influencer_persona(influencer_name: str):
@@ -137,10 +152,10 @@ def setup_influencer_persona(influencer_name: str):
     persona_extract_agent = PersonaExtractAgent(chat_model, session_manager.get_serpapi_key())
 
     # Tone 선택 (로그 자동 출력됨)
-    tone_file_path = tone_select_agent.act(influencer_name)
+    tone_file_path = tone_select_agent.act(influencer_name=influencer_name)
 
     # 페르소나 컨텍스트 검색
-    persona_context = persona_extract_agent.act(influencer_name)
+    persona_context = persona_extract_agent.act(influencer_name=influencer_name)
 
     # 세션에 인플루언서 이름 및 Tone 정보 저장
     session_manager.save_influencer_setup(
@@ -374,7 +389,7 @@ def run_app():
                 )
 
                 # 3-2. 응답 분할
-                split_parts = response_split_agent.act(response)
+                split_parts = response_split_agent.act(response=response)
 
                 error_placeholder.empty()
 

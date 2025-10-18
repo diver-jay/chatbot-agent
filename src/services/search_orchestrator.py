@@ -3,7 +3,7 @@ from typing import Tuple, Optional, Dict, Any
 
 from src.utils.decorators import retry_on_error, log_search_execution
 from src.agents.term_detect_agent import TermDetectAgent
-from src.services.entity_detector import EntityDetector
+from src.agents.topic_detect_agent import TopicDetectAgent
 from src.services.search_service import SearchService
 from src.agents.sns_relevance_check_agent import SNSRelevanceCheckAgent
 
@@ -15,11 +15,8 @@ class SearchOrchestrator:
         self.chat_model = chat_model
         self.session_manager = session_manager
 
-        # Detector 초기화
         self.term_detect_agent = TermDetectAgent(chat_model)
-        self.entity_detector = EntityDetector(chat_model, session_manager)
-
-        # SNSRelevanceCheckAgent 초기화
+        self.topic_detect_agent = TopicDetectAgent(chat_model, session_manager)
         self.relevance_check_agent = SNSRelevanceCheckAgent(chat_model)
 
         # SearchService 초기화
@@ -49,9 +46,9 @@ class SearchOrchestrator:
         print(f"[Analyze Question] 인플루언서 이름: {influencer_name}")
         print(f"{'='*60}\n")
 
-        term_needs_search = self.term_detect_agent.act(question)
+        need_search = self.term_detect_agent.act(user_message=question)
 
-        if term_needs_search:
+        if need_search:
             print("✅ 신조어 검색 모드 활성화")
             self._is_term_search = True
             self._is_daily_life = False
@@ -62,7 +59,7 @@ class SearchOrchestrator:
             print(f"[Analyze Question] 확장 검색어: '{enhanced_term}'")
 
             # 신조어 검색이더라도 콘텐츠 요청 여부는 확인 필요
-            requests_content = self.entity_detector._check_content_request(question)
+            requests_content = self.topic_detect_agent._check_content_request(question)
             self._requests_content = requests_content
             print(f"[Analyze Question] 콘텐츠 요청 여부 확인: {requests_content}")
             print(
@@ -70,17 +67,19 @@ class SearchOrchestrator:
             )
         else:
             self._is_term_search = False
-            print("➡️ EntityDetector로 넘어감")
+            print("➡️ TopicDetectAgent로 넘어감")
 
-            entity_needs_search, entity_search_term, is_daily_life, requests_content = (
-                self.entity_detector.detect(question, influencer_name)
+            topic_needs_search, topic_search_term, is_daily_life, requests_content = (
+                self.topic_detect_agent.act(
+                    user_message=question, influencer_name=influencer_name
+                )
             )
             print(
-                f"[EntityDetector] 검색 필요: {entity_needs_search} | 검색어: {entity_search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content}"
+                f"[TopicDetectAgent] 검색 필요: {topic_needs_search} | 검색어: {topic_search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content}"
             )
 
-            self._needs_search = entity_needs_search
-            self._search_term = entity_search_term
+            self._needs_search = topic_needs_search
+            self._search_term = topic_search_term
             self._requests_content = requests_content
             self._is_daily_life = is_daily_life
             print(

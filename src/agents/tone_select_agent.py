@@ -1,7 +1,8 @@
-from src.agents.prompt_loader import ToneSelectionPromptLoader
+from src.agents.chat_agent import ChatAgent
+from typing_extensions import override
 
 
-class ToneSelectAgent:
+class ToneSelectAgent(ChatAgent):
     # 사용 가능한 Tone 템플릿 경로
     TONE_TEMPLATES = {
         "influencer_20s": "prompts/tone_influencer_20s.md",
@@ -9,13 +10,26 @@ class ToneSelectAgent:
         "mentor": "prompts/tone_mentor.md",  # 기본 멘토/박사님 스타일
     }
 
-    def __init__(self, chat_model):
+    def __init__(self, chat_model, file_path="prompts/tone_selection_prompt.md"):
         self.chat_model = chat_model
-        self.tone_selection_loader = ToneSelectionPromptLoader()
+        self.file_path = file_path
 
-    def act(self, influencer_name: str) -> str:
+    @override
+    def load_prompt(self):
         try:
-            analysis_prompt = self.tone_selection_loader.load().format(
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
+
+    @override
+    def act(self, **kwargs) -> str:
+        influencer_name = kwargs.get("influencer_name")
+        if not influencer_name:
+            return self.TONE_TEMPLATES["mentor"]  # Return default
+
+        try:
+            analysis_prompt = self.load_prompt().format(
                 influencer_name=influencer_name
             )
             ai_response = self.chat_model.invoke(analysis_prompt).content.strip()
@@ -23,6 +37,7 @@ class ToneSelectAgent:
             return self.TONE_TEMPLATES[tone_type]
 
         except Exception as e:
+            print(f"[ToneSelectAgent] Error: {e}")
             return self.TONE_TEMPLATES["mentor"]
 
     def _get_tone_type(self, ai_response: str) -> str:
