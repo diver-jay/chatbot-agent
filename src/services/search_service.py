@@ -355,13 +355,23 @@ class SearchService:
                 # YouTube 시간 필터 변환 (RFC 3339 날짜로)
                 published_after = self._get_youtube_time_filter(tbs_value)
 
+                # 검색어 강화: YouTube 검색용 쿼리 정제
+                youtube_query = query
+                remove_keywords = ["유튜브", "youtube", "영상", "동영상", "비디오", "video"]
+                for keyword in remove_keywords:
+                    youtube_query = youtube_query.replace(keyword, "").replace(keyword.upper(), "").replace(keyword.capitalize(), "")
+                youtube_query = " ".join(youtube_query.split())  # 연속 공백 제거
+
+                if youtube_query != query:
+                    print(f"[YouTube Query] 검색어 강화: '{query}' → '{youtube_query}'")
+
                 # 병렬 검색 실행
                 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                     images_future = executor.submit(
                         self._search_google_images, query, tbs_value
                     )
                     youtube_future = executor.submit(
-                        self._search_youtube_direct, query, published_after
+                        self._search_youtube_direct, youtube_query, published_after
                     )
 
                     # 결과 대기
