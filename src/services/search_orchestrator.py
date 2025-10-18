@@ -158,7 +158,7 @@ class SearchOrchestrator:
         log(self.__class__.__name__, f"Current Date: {current_date}")
         log(self.__class__.__name__, f"SNS 검색 건너뜀 (일상 질문 아님)")
 
-        search_results = self.search_service.search(search_term)
+        search_results = self.search_service.search_web(search_term)
         search_summary = self.search_service.extract_summary(search_results)
 
         # 기본 검색 컨텍스트

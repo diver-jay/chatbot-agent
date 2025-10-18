@@ -27,7 +27,7 @@ class PersonaExtractAgent(ChatAgent):
 
         try:
             search_service = SearchService(api_key=self.serpapi_key)
-            search_results = search_service.search(influencer_name)
+            search_results = search_service.search_web(influencer_name)
             search_summary = search_service.extract_summary(search_results)
 
             prompt_template = self.load_prompt()
