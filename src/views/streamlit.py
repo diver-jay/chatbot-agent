@@ -6,7 +6,7 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 # 분리된 모듈 임포트
 from src.services.prompt_loader import ToneAwarePromptLoader
 from src.models.model_factory import ChatModelFactory
-from src.services.response_processor import split_response_by_context
+from src.services.response_splitter import ResponseSplitter
 
 # from src.services.image_selector import select_image_for_context
 from src.models.session_manager import StreamlitSessionManager
@@ -322,6 +322,9 @@ def run_app():
     # SearchOrchestrator 초기화
     orchestrator = SearchOrchestrator(chat_model, session_manager)
 
+    # ResponseSplitter 초기화
+    response_splitter = ResponseSplitter(chat_model)
+
     # 선택된 Tone으로 대화 체인 구성
     tone_file_path = session_manager.get_tone_file_path()
     influencer_name = session_manager.get_influencer_name()
@@ -369,7 +372,7 @@ def run_app():
                 )
 
                 # 3-2. 응답 분할
-                split_parts = split_response_by_context(response, chat_model)
+                split_parts = response_splitter.split_by_context(response)
 
                 error_placeholder.empty()
 
