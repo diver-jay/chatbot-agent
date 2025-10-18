@@ -21,6 +21,48 @@ class SplitPromptLoader(PromptLoader):
             raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
 
 
+class TermDetectionPromptLoader(PromptLoader):
+    """신조어/용어 감지를 위한 프롬프트 로더"""
+
+    def __init__(self, file_path="prompts/term_detection_prompt.md"):
+        self.file_path = file_path
+
+    def load(self):
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
+
+
+class ToneSelectionPromptLoader(PromptLoader):
+    """Tone 선택을 위한 프롬프트 로더"""
+
+    def __init__(self, file_path="prompts/tone_selection_prompt.md"):
+        self.file_path = file_path
+
+    def load(self):
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
+
+
+class PersonaExtractionPromptLoader(PromptLoader):
+    """페르소나 추출을 위한 프롬프트 로더"""
+
+    def __init__(self, file_path="prompts/persona_extraction_prompt.md"):
+        self.file_path = file_path
+
+    def load(self):
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
+
+
 class ToneAwarePromptLoader(PromptLoader):
     """
     단일 프롬프트 파일을 로드하여 시스템 프롬프트를 생성하는 Loader.

@@ -1,6 +1,7 @@
 # Refactoring Summary
 
 ## 개요
+
 챗봇 애플리케이션의 질문 분석 및 검색 로직을 Orchestrator 패턴과 Decorator 패턴을 적용하여 리팩토링
 
 ---
@@ -8,11 +9,14 @@
 ## 1. 아키텍처 변경
 
 ### 1.1 Orchestrator 패턴 도입
+
 **Before:**
+
 - `perform_search_if_needed()` 함수에서 질문 분석과 검색 실행이 결합됨
 - 책임이 명확하게 분리되지 않음
 
 **After:**
+
 - `SearchOrchestrator` 클래스 생성 (`src/services/search_orchestrator.py`)
 - 질문 분석(`analyze_question()`)과 검색 실행(`execute_search()`) 분리
 - 모든 검색 관련 로직을 중앙에서 관리
@@ -24,7 +28,7 @@ class SearchOrchestrator:
     def __init__(self, chat_model, session_manager):
         self.chat_model = chat_model
         self.session_manager = session_manager
-        self.term_detector = TermDetector(chat_model)
+        self.term_detect_agent = TermDetector(chat_model)
         self.entity_detector = EntityDetector(chat_model, session_manager)
         self.relevance_checker = SNSRelevanceChecker(chat_model)
         self.search_service = SearchService(...)
@@ -39,14 +43,17 @@ class SearchOrchestrator:
 ---
 
 ### 1.2 Decorator 패턴 적용
+
 **생성된 파일:** `src/utils/decorators.py`
 
 **구현된 데코레이터:**
+
 1. `@log_analysis_result` - 질문 분석 결과 로깅 (현재 미사용)
 2. `@retry_on_error` - 오류 시 재시도 (최대 3회, 지수 백오프)
 3. `@log_search_execution` - 검색 실행 시간 측정 및 로깅
 
 **적용 위치:**
+
 ```python
 @retry_on_error(max_attempts=2, delay=2.0)
 def _search_general_context(self, search_term: str, ...):
@@ -62,13 +69,16 @@ def execute_search(self, question: str):
 ## 2. 책임 분리 (Single Responsibility Principle)
 
 ### 2.1 응답 생성/표시 분리
+
 **Before:**
+
 ```python
 def generate_and_display_response(question, conversation, search_context, sns_content, ...):
     # 생성 + 표시를 한 함수에서 처리
 ```
 
 **After:**
+
 ```python
 def generate_response(question, conversation, search_context, sns_content):
     # 응답 생성만 담당
@@ -84,16 +94,20 @@ def display_response(split_parts, sns_content, requests_content, ...):
 ### 2.2 상태 캡슐화
 
 #### QuestionAnalysisResult 제거
+
 **Before:**
+
 - `QuestionAnalysisResult` 데이터클래스가 분석 결과를 반환
 - 불필요한 데이터 전달 (`is_term_search`, `is_daily_life` 등)
 
 **After:**
+
 - 모든 분석 상태를 `SearchOrchestrator`의 private 변수로 관리
 - `QuestionAnalysisResult` 파일 삭제
 - Property를 통한 접근 제공
 
 **Private 상태 변수:**
+
 ```python
 self._is_term_search = False
 self._is_daily_life = False
@@ -115,13 +129,16 @@ def requests_content(self) -> bool:
 ## 3. 의존성 주입 (Dependency Injection)
 
 ### 3.1 EntityDetector 개선
+
 **Before:**
+
 ```python
 def detect(self, user_message: str, influencer_name: str, chat_history: List):
     # chat_history를 파라미터로 받음
 ```
 
 **After:**
+
 ```python
 class EntityDetector:
     def __init__(self, chat_model, session_manager):
@@ -137,7 +154,9 @@ class EntityDetector:
 ---
 
 ### 3.2 SearchService 초기화 개선
+
 **Before:**
+
 ```python
 def _get_search_service(self) -> Optional[SearchService]:
     # 매번 새로운 인스턴스 생성
@@ -147,6 +166,7 @@ def _get_search_service(self) -> Optional[SearchService]:
 ```
 
 **After:**
+
 ```python
 def __init__(self, chat_model, session_manager):
     # 초기화 시 한 번만 생성
@@ -160,6 +180,7 @@ def __init__(self, chat_model, session_manager):
 ## 4. SessionManager 확장
 
 ### 4.1 새로운 메서드 추가
+
 **위치:** `src/models/session_manager.py`
 
 ```python
@@ -175,6 +196,7 @@ def get_chat_history(self):
 ```
 
 **구현:**
+
 ```python
 def get_youtube_api_key(self):
     return st.session_state.get('youtube_api_key', None)
@@ -188,7 +210,9 @@ def get_chat_history(self):
 ## 5. 검색 로직 개선
 
 ### 5.1 Early Return 패턴
+
 **Before:**
+
 ```python
 def execute_search(self, question: str):
     if not self._needs_search:
@@ -197,6 +221,7 @@ def execute_search(self, question: str):
 ```
 
 **After:**
+
 ```python
 # streamlit.py
 if orchestrator.needs_search:
@@ -211,15 +236,18 @@ else:
 ---
 
 ### 5.2 시간 필터 Fallback 추가
+
 **위치:** `src/services/search_service.py`
 
 **Before:**
+
 ```python
 def search(self, query: str, num_results: int = 3):
     # 단일 검색만 수행
 ```
 
 **After:**
+
 ```python
 def search(self, query: str, num_results: int = 3, time_filter: Optional[str] = None):
     time_filters = ["qdr:m3", "qdr:m6", "qdr:y", None]  # 3개월 → 6개월 → 1년 → 전체
@@ -237,7 +265,9 @@ def search(self, query: str, num_results: int = 3, time_filter: Optional[str] = 
 ---
 
 ### 5.3 신조어 검색 개선
+
 **Before:**
+
 ```python
 if term_needs_search:
     self._search_term = term_search_term  # "금쪽이"
@@ -245,6 +275,7 @@ if term_needs_search:
 ```
 
 **After:**
+
 ```python
 if term_needs_search:
     # 검색어 확장: 인플루언서 이름 + 전체 질문
@@ -257,6 +288,7 @@ if term_needs_search:
 ```
 
 **개선점:**
+
 - 신조어만 검색하는 게 아니라 전체 컨텍스트를 포함하여 검색 정확도 향상
 - 콘텐츠 요청 감지를 통해 영상/링크 표시 가능
 
@@ -269,7 +301,9 @@ if term_needs_search:
 **위치:** `src/services/search_orchestrator.py`, `src/services/search_service.py`
 
 **추가된 로그:**
+
 1. **analyze_question():**
+
    ```
    [Analyze Question] 사용자 질문: ...
    [Analyze Question] 인플루언서: ...
@@ -279,6 +313,7 @@ if term_needs_search:
    ```
 
 2. **execute_search():**
+
    ```
    [Execute Search] 검색 시작
    [Execute Search] search_term: ...
@@ -299,14 +334,17 @@ if term_needs_search:
 ---
 
 ### 6.2 불필요한 주석 제거
+
 **대상 파일:** 모든 Python 파일
 
 **제거된 주석:**
+
 - 코드를 단순 반복 설명하는 주석
 - 명백한 코드를 설명하는 주석 (예: `# 초기화`, `# 리턴`)
 - 구분선 주석
 
 **유지된 주석:**
+
 - Docstrings
 - 복잡한 로직 설명
 - TODO/FIXME/NOTE
@@ -317,6 +355,7 @@ if term_needs_search:
 ## 7. 코드 스타일
 
 ### 7.1 VS Code 설정 추가
+
 **파일:** `.vscode/settings.json`
 
 ```json
@@ -336,6 +375,7 @@ if term_needs_search:
 ---
 
 ## 8. 삭제된 파일
+
 - `src/models/question_analysis_result.py` - 더 이상 필요 없음 (상태 캡슐화로 대체)
 
 ---
@@ -343,17 +383,20 @@ if term_needs_search:
 ## 9. 주요 파일 변경 요약
 
 ### 새로 생성된 파일:
+
 - `src/services/search_orchestrator.py` - Orchestrator 패턴 구현
 - `src/utils/decorators.py` - Decorator 패턴 구현
 - `.vscode/settings.json` - 코드 포맷 설정
 
 ### 대폭 수정된 파일:
+
 - `src/views/streamlit.py` - Orchestrator 사용, 함수 분리
 - `src/services/entity_detector.py` - 의존성 주입
 - `src/services/search_service.py` - 시간 필터 fallback, 로깅
 - `src/models/session_manager.py` - 메서드 추가
 
 ### 소폭 수정된 파일:
+
 - 모든 Python 파일 - 불필요한 주석 제거
 
 ---
@@ -361,6 +404,7 @@ if term_needs_search:
 ## 10. 리팩토링 효과
 
 ### 개선 사항:
+
 ✅ **관심사 분리**: 분석/검색/표시 로직이 명확히 분리됨
 ✅ **재사용성**: SearchOrchestrator를 다른 곳에서도 사용 가능
 ✅ **테스트 용이성**: 각 컴포넌트를 독립적으로 테스트 가능
@@ -370,6 +414,7 @@ if term_needs_search:
 ✅ **성능**: SearchService 재사용으로 인스턴스 생성 오버헤드 감소
 
 ### 기능 개선:
+
 ✅ 시간 필터 자동 fallback (3개월 → 6개월 → 1년 → 전체)
 ✅ 신조어 검색 시 전체 컨텍스트 활용
 ✅ 신조어 검색에서도 콘텐츠 요청 감지
@@ -379,14 +424,14 @@ if term_needs_search:
 
 ## 11. 패턴 적용 요약
 
-| 패턴 | 적용 위치 | 효과 |
-|------|----------|------|
-| **Orchestrator** | SearchOrchestrator | 복잡한 워크플로우 관리 |
-| **Decorator** | 로깅, 재시도 | 횡단 관심사 분리 |
-| **Dependency Injection** | EntityDetector, SearchService | 결합도 감소 |
-| **Single Responsibility** | generate_response, display_response | 책임 명확화 |
-| **Early Return** | streamlit.py | 가독성 향상 |
-| **Encapsulation** | Private 변수 + Property | 상태 은닉 |
+| 패턴                      | 적용 위치                           | 효과                   |
+| ------------------------- | ----------------------------------- | ---------------------- |
+| **Orchestrator**          | SearchOrchestrator                  | 복잡한 워크플로우 관리 |
+| **Decorator**             | 로깅, 재시도                        | 횡단 관심사 분리       |
+| **Dependency Injection**  | EntityDetector, SearchService       | 결합도 감소            |
+| **Single Responsibility** | generate_response, display_response | 책임 명확화            |
+| **Early Return**          | streamlit.py                        | 가독성 향상            |
+| **Encapsulation**         | Private 변수 + Property             | 상태 은닉              |
 
 ---
 

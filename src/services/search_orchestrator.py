@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Tuple, Optional, Dict, Any
 
 from src.utils.decorators import retry_on_error, log_search_execution
-from src.services.term_detector import TermDetector
+from src.services.term_detect_agent import TermDetectAgent
 from src.services.entity_detector import EntityDetector
 from src.services.search_service import SearchService
 from src.services.sns_relevance_checker import SNSRelevanceChecker
@@ -16,7 +16,7 @@ class SearchOrchestrator:
         self.session_manager = session_manager
 
         # Detector 초기화
-        self.term_detector = TermDetector(chat_model)
+        self.term_detect_agent = TermDetectAgent(chat_model)
         self.entity_detector = EntityDetector(chat_model, session_manager)
 
         # SNSRelevanceChecker 초기화
@@ -49,7 +49,7 @@ class SearchOrchestrator:
         print(f"[Analyze Question] 인플루언서 이름: {influencer_name}")
         print(f"{'='*60}\n")
 
-        term_needs_search = self.term_detector.detect(question)
+        term_needs_search = self.term_detect_agent.act(question)
 
         if term_needs_search:
             print("✅ 신조어 검색 모드 활성화")
@@ -61,12 +61,13 @@ class SearchOrchestrator:
             self._search_term = enhanced_term
             print(f"[Analyze Question] 확장 검색어: '{enhanced_term}'")
 
-
             # 신조어 검색이더라도 콘텐츠 요청 여부는 확인 필요
             requests_content = self.entity_detector._check_content_request(question)
             self._requests_content = requests_content
             print(f"[Analyze Question] 콘텐츠 요청 여부 확인: {requests_content}")
-            print(f"[Analyze Question] 최종 상태 - needs_search: {self._needs_search}, search_term: '{self._search_term}', is_term_search: {self._is_term_search}, requests_content: {self._requests_content}")
+            print(
+                f"[Analyze Question] 최종 상태 - needs_search: {self._needs_search}, search_term: '{self._search_term}', is_term_search: {self._is_term_search}, requests_content: {self._requests_content}"
+            )
         else:
             self._is_term_search = False
             print("➡️ EntityDetector로 넘어감")
@@ -82,7 +83,9 @@ class SearchOrchestrator:
             self._search_term = entity_search_term
             self._requests_content = requests_content
             self._is_daily_life = is_daily_life
-            print(f"[Analyze Question] 최종 상태 - needs_search: {self._needs_search}, search_term: {self._search_term}, is_daily_life: {self._is_daily_life}, requests_content: {self._requests_content}")
+            print(
+                f"[Analyze Question] 최종 상태 - needs_search: {self._needs_search}, search_term: {self._search_term}, is_daily_life: {self._is_daily_life}, requests_content: {self._requests_content}"
+            )
 
     @retry_on_error(max_attempts=2, delay=2.0)
     def _search_general_context(
@@ -192,6 +195,7 @@ class SearchOrchestrator:
 
         except Exception as e:
             import traceback
+
             print(f"[Search] 검색 중 오류: {e}")
             print(f"[Search] Traceback:\n{traceback.format_exc()}")
             return "", None
