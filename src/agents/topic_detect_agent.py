@@ -4,14 +4,13 @@ from langchain_core.messages import HumanMessage
 from src.agents.chat_agent import ChatAgent
 from typing_extensions import override
 from src.utils.parser import parse_json_from_response
-
+from src.utils.logger import log
 
 @dataclass
 class TopicDetectionResult:
     needs_search: bool
     search_term: Optional[str]
     is_daily_life: bool
-
 
 class TopicDetectAgent(ChatAgent):
     """특정 토픽(인물, 사건 등)을 감지하는 에이전트"""
@@ -58,25 +57,24 @@ class TopicDetectAgent(ChatAgent):
             is_media_requested = result.get("is_media_requested", False)
             reason = result.get("reason", "")
 
-            print(
-                f"[Media Request Check] 미디어 요청: {is_media_requested} | 이유: {reason}"
-            )
+            log(self.__class__.__name__, f"미디어 요청: {is_media_requested} | 이유: {reason}")
 
             return is_media_requested
 
         except Exception as e:
-            print(f"[Media Request Check] 오류: {e}")
+            log(self.__class__.__name__, f"미디어 요청 확인 중 오류: {e}")
             return False
 
     @override
     def act(self, **kwargs) -> TopicDetectionResult:
+        """
+        사용자 메시지에서 검색이 필요한 토픽을 감지합니다.
+        """
         user_message = kwargs.get("user_message")
         influencer_name = kwargs.get("influencer_name")
 
         if not user_message:
-            return TopicDetectionResult(
-                needs_search=False, search_term=None, is_daily_life=False
-            )
+            return TopicDetectionResult(needs_search=False, search_term=None, is_daily_life=False)
 
         try:
             prompt_template = self.load_prompt()
@@ -113,8 +111,9 @@ class TopicDetectAgent(ChatAgent):
                 elif influencer_name.lower() not in search_term.lower():
                     search_term = f"{influencer_name} {search_term}"
 
-            print(
-                f"[TopicDetectAgent] 🔍 검색 필요: {needs_search} | 검색어: {search_term} | 일상: {is_daily_life} | 판단 근거: {result.get('reason', 'N/A')}"
+            log(
+                self.__class__.__name__,
+                f"🔍 검색 필요: {needs_search} | 검색어: {search_term} | 일상: {is_daily_life} | 판단 근거: {result.get('reason', 'N/A')}"
             )
 
             return TopicDetectionResult(
@@ -124,7 +123,5 @@ class TopicDetectAgent(ChatAgent):
             )
 
         except Exception as e:
-            print(f"[TopicDetectAgent] Error: {e}")
-            return TopicDetectionResult(
-                needs_search=False, search_term=None, is_daily_life=False
-            )
+            log(self.__class__.__name__, f"Error: {e}")
+            return TopicDetectionResult(needs_search=False, search_term=None, is_daily_life=False)

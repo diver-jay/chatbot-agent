@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage
 from src.agents.chat_agent import ChatAgent
 from src.utils.parser import parse_json_from_response
 from typing_extensions import override
+from src.utils.logger import log
 
 @dataclass
 class TermDetectionResult:
@@ -40,12 +41,13 @@ class TermDetectAgent(ChatAgent):
             # If search is not needed, search_term should be None
             search_term = result.get("search_term") if needs_search else None
 
-            print(
-                f"[TermDetectAgent] needs_search={needs_search}, term={search_term}, reason={result.get('reason', '')}"
+            log(
+                self.__class__.__name__,
+                f"needs_search={needs_search}, term={search_term}, reason={result.get('reason', '')}"
             )
 
             return TermDetectionResult(needs_search=needs_search, search_term=search_term)
 
         except Exception as e:
-            print(f"[TermDetectAgent] Error: {e}")
+            log(self.__class__.__name__, f"Error: {e}")
             return TermDetectionResult(needs_search=False, search_term=None)

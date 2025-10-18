@@ -1,5 +1,6 @@
 from src.agents.chat_agent import ChatAgent
 from typing_extensions import override
+from src.utils.logger import log
 
 
 class ToneSelectAgent(ChatAgent):
@@ -37,7 +38,7 @@ class ToneSelectAgent(ChatAgent):
             return self.TONE_TEMPLATES[tone_type]
 
         except Exception as e:
-            print(f"[ToneSelectAgent] Error: {e}")
+            log(self.__class__.__name__, f"Error: {e}")
             return self.TONE_TEMPLATES["mentor"]
 
     def _get_tone_type(self, ai_response: str) -> str:

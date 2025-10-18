@@ -2,6 +2,7 @@ import re
 from langchain_core.messages import HumanMessage
 from src.agents.chat_agent import ChatAgent
 from typing_extensions import override
+from src.utils.logger import log
 
 
 class ResponseSplitAgent(ChatAgent):
@@ -25,9 +26,15 @@ class ResponseSplitAgent(ChatAgent):
         try:
             prompt = self.load_prompt()
             split_request = f"{prompt}\n\n다음 텍스트를 위 가이드라인에 따라 분할해주세요:\n\n{response}"
-            split_text = self.chat_model.invoke([HumanMessage(content=split_request)]).content
-            parts = [part.strip() for part in re.split(r"\[\[SPLIT_\d+\]\]", split_text) if part.strip()]
+            split_text = self.chat_model.invoke(
+                [HumanMessage(content=split_request)]
+            ).content
+            parts = [
+                part.strip()
+                for part in re.split(r"\[\[SPLIT_\d+\]\]", split_text)
+                if part.strip()
+            ]
             return parts if parts else [response]
         except Exception as e:
-            print(f"답변 분할 중 오류 발생: {str(e)}")
+            log(self.__class__.__name__, f"답변 분할 중 오류 발생: {str(e)}")
             return [response]

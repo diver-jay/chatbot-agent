@@ -3,6 +3,7 @@ from langchain_core.messages import HumanMessage
 from src.agents.chat_agent import ChatAgent
 from src.utils.parser import parse_json_from_response
 from typing_extensions import override
+from src.utils.logger import log
 
 
 class SNSRelevanceCheckAgent(ChatAgent):
@@ -42,12 +43,11 @@ class SNSRelevanceCheckAgent(ChatAgent):
             is_relevant = result.get("is_relevant", False)
             reason = result.get("reason", "")
 
-            # 로깅
-            print(f"[SNSRelevanceCheckAgent] 관련성: {is_relevant} | 이유: {reason}")
+            log(self.__class__.__name__, f"관련성: {is_relevant} | 이유: {reason}")
 
             return is_relevant
 
         except Exception as e:
-            print(f"[SNSRelevanceCheckAgent] 검증 중 오류: {e}")
+            log(self.__class__.__name__, f"검증 중 오류: {e}")
             # 오류 발생 시 안전하게 관련있다고 판단 (false negative 방지)
             return True

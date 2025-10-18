@@ -2,6 +2,7 @@ from typing import Optional
 from src.services.search_service import SearchService
 from src.agents.chat_agent import ChatAgent
 from typing_extensions import override
+from src.utils.logger import log
 
 
 class PersonaExtractAgent(ChatAgent):
@@ -40,5 +41,5 @@ class PersonaExtractAgent(ChatAgent):
             return persona_context
 
         except Exception as e:
-            print(f"페르소나 추출 중 오류 발생: {e}")
+            log(self.__class__.__name__, f"페르소나 추출 중 오류 발생: {e}")
             return ""
