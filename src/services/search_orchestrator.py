@@ -17,7 +17,7 @@ class SearchOrchestrator:
 
         # Detector 초기화
         self.term_detector = TermDetector(chat_model)
-        self.entity_detector = EntityDetector(chat_model)
+        self.entity_detector = EntityDetector(chat_model, session_manager)
 
         # SNSRelevanceChecker 초기화
         self.relevance_checker = SNSRelevanceChecker(chat_model)
@@ -45,29 +45,34 @@ class SearchOrchestrator:
     def analyze_question(self, question: str, influencer_name: str):
         """분석 유형을 결정하고 해당 분석 메서드를 호출합니다."""
         print(f"\n{'='*60}")
-        print(f"[DEBUG] 사용자 질문: {question}")
+        print(f"[Analyze Question] 사용자 질문: {question}")
+        print(f"[Analyze Question] 인플루언서 이름: {influencer_name}")
         print(f"{'='*60}\n")
 
-        # 용어 검색 필요 여부 확인
-        term_needs_search, term_search_term = self.term_detector.detect(question)
-        print(
-            f"[TermDetector] 검색 필요: {term_needs_search} | 검색어: {term_search_term}"
-        )
-
-        # 대화 히스토리 가져오기
-        chat_history = self.session_manager.get_chat_history()
+        term_needs_search = self.term_detector.detect(question)
 
         if term_needs_search:
+            print("✅ 신조어 검색 모드 활성화")
             self._is_term_search = True
             self._is_daily_life = False
             self._needs_search = True
-            self._search_term = term_search_term
-            self._requests_content = False
+
+            enhanced_term = f"{influencer_name} {question}".strip()
+            self._search_term = enhanced_term
+            print(f"[Analyze Question] 확장 검색어: '{enhanced_term}'")
+
+
+            # 신조어 검색이더라도 콘텐츠 요청 여부는 확인 필요
+            requests_content = self.entity_detector._check_content_request(question)
+            self._requests_content = requests_content
+            print(f"[Analyze Question] 콘텐츠 요청 여부 확인: {requests_content}")
+            print(f"[Analyze Question] 최종 상태 - needs_search: {self._needs_search}, search_term: '{self._search_term}', is_term_search: {self._is_term_search}, requests_content: {self._requests_content}")
         else:
             self._is_term_search = False
+            print("➡️ EntityDetector로 넘어감")
 
             entity_needs_search, entity_search_term, is_daily_life, requests_content = (
-                self.entity_detector.detect(question, influencer_name, chat_history)
+                self.entity_detector.detect(question, influencer_name)
             )
             print(
                 f"[EntityDetector] 검색 필요: {entity_needs_search} | 검색어: {entity_search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content}"
@@ -77,6 +82,7 @@ class SearchOrchestrator:
             self._search_term = entity_search_term
             self._requests_content = requests_content
             self._is_daily_life = is_daily_life
+            print(f"[Analyze Question] 최종 상태 - needs_search: {self._needs_search}, search_term: {self._search_term}, is_daily_life: {self._is_daily_life}, requests_content: {self._requests_content}")
 
     @retry_on_error(max_attempts=2, delay=2.0)
     def _search_general_context(
@@ -154,25 +160,40 @@ class SearchOrchestrator:
         """
         search_term = self._search_term
 
+        # 검색 시작 시 모든 상태 변수 로깅
+        print(f"\n{'='*60}")
+        print(f"[Execute Search] 검색 시작")
+        print(f"[Execute Search] search_term: {search_term}")
+        print(f"[Execute Search] is_term_search: {self._is_term_search}")
+        print(f"[Execute Search] is_daily_life: {self._is_daily_life}")
+        print(f"[Execute Search] needs_search: {self._needs_search}")
+        print(f"[Execute Search] requests_content: {self._requests_content}")
+        print(f"{'='*60}\n")
+
         try:
             # 1. 신조어/용어 검색
             if self._is_term_search:
+                print("→ 신조어/용어 검색 경로")
                 return self._search_general_context(
                     search_term, add_term_instruction=True
                 )
 
             # 2. 일상 질문 (SNS 시도)
             elif self._is_daily_life:
+                print("→ 일상 질문 (SNS) 경로")
                 return self._search_sns_content_with_fallback(search_term, question)
 
             # 3. 일반 인물/사건 검색
             else:
+                print("→ 일반 인물/사건 검색 경로")
                 return self._search_general_context(
                     search_term, add_term_instruction=False
                 )
 
         except Exception as e:
+            import traceback
             print(f"[Search] 검색 중 오류: {e}")
+            print(f"[Search] Traceback:\n{traceback.format_exc()}")
             return "", None
 
     @property

@@ -10,28 +10,28 @@ from langchain_core.messages import HumanMessage
 class EntityDetector:
     """특정 인물 및 사건을 감지하는 클래스"""
 
-    def __init__(self, chat_model):
+    def __init__(self, chat_model, session_manager):
         """
         Args:
             chat_model: LangChain 채팅 모델 인스턴스
+            session_manager: 세션 관리자 인스턴스
         """
         self.chat_model = chat_model
+        self.session_manager = session_manager
 
-    def _check_content_request(
-        self, user_message: str, chat_history: Optional[list] = None
-    ) -> bool:
+    def _check_content_request(self, user_message: str) -> bool:
         """
         AI를 사용하여 사용자가 영상/사진/링크 등 콘텐츠를 명시적으로 요청했는지 판단합니다.
 
         Args:
             user_message: 사용자 메시지
-            chat_history: 대화 히스토리
 
         Returns:
             콘텐츠 요청 여부
         """
         try:
-            # 최근 대화 히스토리 포맷팅
+            chat_history = self.session_manager.get_chat_history()
+
             history_context = ""
             if chat_history:
                 recent_history = (
@@ -116,7 +116,6 @@ JSON 형식으로만 응답하세요:
         self,
         user_message: str,
         influencer_name: Optional[str] = None,
-        chat_history: Optional[list] = None,
     ) -> Tuple[bool, Optional[str], bool, bool]:
         """
         사용자 메시지에서 검색이 필요한 인물/사건을 감지합니다.
@@ -124,7 +123,6 @@ JSON 형식으로만 응답하세요:
         Args:
             user_message: 사용자 입력 메시지
             influencer_name: 인플루언서 이름 (선택사항)
-            chat_history: 대화 히스토리 (선택사항) - [{"role": "human/assistant", "content": "..."}, ...]
 
         Returns:
             (검색 필요 여부, 검색할 용어, 일상 관련 여부, 콘텐츠 요청 여부) 튜플
@@ -136,7 +134,8 @@ JSON 형식으로만 응답하세요:
             with open(prompt_template_path, "r", encoding="utf-8") as f:
                 prompt_template = f.read()
 
-            # 대화 히스토리를 문자열로 포맷팅
+            chat_history = self.session_manager.get_chat_history()
+
             history_context = ""
             if chat_history:
                 # 최근 4개 메시지만 사용 (2턴)
@@ -179,7 +178,7 @@ JSON 형식으로만 응답하세요:
             is_daily_life = result.get("is_daily_life", False)
 
             # 콘텐츠 요청 여부 판단 (영상, 사진, 링크 등)
-            requests_content = self._check_content_request(user_message, chat_history)
+            requests_content = self._check_content_request(user_message)
 
             # influencer_name이 있고, search_term에 아직 포함되지 않았으면 앞에 추가
             if needs_search and search_term and influencer_name:

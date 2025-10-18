@@ -43,6 +43,10 @@ class SearchService:
         Returns:
             검색 결과 딕셔너리
         """
+        print(f"\n[Search Service] 검색 시작")
+        print(f"[Search Service] query: {query}")
+        print(f"[Search Service] num_results: {num_results}")
+
         try:
             params = {
                 "q": query,
@@ -55,9 +59,27 @@ class SearchService:
             response = requests.get(self.base_url, params=params, timeout=10)
             response.raise_for_status()
 
-            return response.json()
+            result = response.json()
+
+            # SerpAPI 응답 키 로깅
+            print(f"[Search Service] SerpAPI 응답 keys: {list(result.keys())}")
+
+            # organic_results 분석
+            if "organic_results" in result:
+                organic_count = len(result["organic_results"])
+                print(f"[Search Service] organic_results 개수: {organic_count}")
+
+                # 상위 3개 제목 로깅
+                if organic_count > 0:
+                    print(f"[Search Service] 상위 결과 제목:")
+                    for i, item in enumerate(result["organic_results"][:3], 1):
+                        title = item.get("title", "")
+                        print(f"  [{i}] {title}")
+
+            return result
 
         except requests.exceptions.RequestException as e:
+            print(f"[Search Service] 검색 오류: {e}")
             return {"error": str(e)}
 
     def extract_summary(self, search_results: Dict[str, Any]) -> str:
@@ -318,8 +340,14 @@ class SearchService:
             (None, "전체 기간"),
         ]
 
-        for tbs_value, period_name in time_ranges:
+        print(f"\n[SNS Search] 검색 시작")
+        print(f"[SNS Search] query: {query}")
+        time_filter_desc = [f"{tbs or 'None'} ({name})" for tbs, name in time_ranges]
+        print(f"[SNS Search] time_filters: {time_filter_desc}")
+
+        for idx, (tbs_value, period_name) in enumerate(time_ranges, 1):
             try:
+                print(f"\n[SNS Search] [{idx}/{len(time_ranges)}] 시도: {period_name} (tbs={tbs_value or 'None'})")
                 print(
                     f"[SNS Search Debug] 검색 파라미터: tbs={tbs_value or 'None'} ({period_name})"
                 )
@@ -416,11 +444,19 @@ class SearchService:
                 print(
                     f"[SNS Search Debug] ❌ {period_name}에서 SNS 링크를 찾지 못함 → Fallback 시도"
                 )
+                if idx < len(time_ranges):
+                    next_period = time_ranges[idx][1]
+                    print(f"[SNS Search] 다음 시도: {next_period}")
 
             except Exception as e:
+                import traceback
                 print(f"[SearchService] SNS 검색 오류 ({period_name}): {e}")
+                print(f"[SearchService] Traceback:\n{traceback.format_exc()}")
+                if idx < len(time_ranges):
+                    next_period = time_ranges[idx][1]
+                    print(f"[SNS Search] 오류 발생 - 다음 시도: {next_period}")
                 continue  # 다음 시간 범위로 이동
 
         # 모든 시간 범위에서 찾지 못함
-        print(f"[SNS Search Debug] ❌ 모든 시간 범위에서 SNS 링크를 찾지 못함")
+        print(f"\n[SNS Search] ❌ 최종 결과: 모든 시간 범위({len(time_ranges)}개)에서 SNS 링크를 찾지 못함")
         return {"found": False}
