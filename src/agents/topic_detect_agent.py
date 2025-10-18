@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Tuple, Optional
 from langchain_core.messages import HumanMessage
 from src.agents.chat_agent import ChatAgent
@@ -5,7 +6,16 @@ from typing_extensions import override
 from src.utils.parser import parse_json_from_response
 
 
+@dataclass
+class TopicDetectionResult:
+    needs_search: bool
+    search_term: Optional[str]
+    is_daily_life: bool
+
+
 class TopicDetectAgent(ChatAgent):
+    """특정 토픽(인물, 사건 등)을 감지하는 에이전트"""
+
     def __init__(self, chat_model, session_manager):
         self.chat_model = chat_model
         self.session_manager = session_manager
@@ -15,16 +25,16 @@ class TopicDetectAgent(ChatAgent):
         with open(prompt_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def _load_content_request_prompt(
-        self, prompt_path="prompts/content_request_detection_prompt.md"
-    ):
+    def _load_media_request_prompt(self, prompt_path="prompts/media_request_detection_prompt.md"):
         with open(prompt_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def _check_content_request(self, user_message: str) -> bool:
+    def is_media_requested(self, user_message: str) -> bool:
+        """
+        AI를 사용하여 사용자가 영상/사진/링크 등 미디어를 명시적으로 요청했는지 판단합니다.
+        """
         try:
             chat_history = self.session_manager.get_chat_history()
-
             history_context = ""
             if chat_history:
                 recent_history = (
@@ -37,39 +47,40 @@ class TopicDetectAgent(ChatAgent):
                     history_lines.append(f"{role}: {content}")
                 history_context = "\n".join(history_lines)
 
-            prompt_template = self._load_content_request_prompt()
+            prompt_template = self._load_media_request_prompt()
             prompt = prompt_template.format(
                 history_context=history_context if history_context else "없음",
-                user_message=user_message,
+                user_message=user_message
             )
 
             response = self.chat_model.invoke([HumanMessage(content=prompt)])
             result = parse_json_from_response(response.content)
-            requests_content = result.get("requests_content", False)
+            is_media_requested = result.get("is_media_requested", False)
             reason = result.get("reason", "")
 
             print(
-                f"[Content Request Check] 콘텐츠 요청: {requests_content} | 이유: {reason}"
+                f"[Media Request Check] 미디어 요청: {is_media_requested} | 이유: {reason}"
             )
 
-            return requests_content
+            return is_media_requested
 
         except Exception as e:
-            print(f"[Content Request Check] 오류: {e}")
+            print(f"[Media Request Check] 오류: {e}")
             return False
 
     @override
-    def act(self, **kwargs) -> Tuple[bool, Optional[str], bool, bool]:
+    def act(self, **kwargs) -> TopicDetectionResult:
         user_message = kwargs.get("user_message")
         influencer_name = kwargs.get("influencer_name")
 
         if not user_message:
-            return False, None, False, False
+            return TopicDetectionResult(
+                needs_search=False, search_term=None, is_daily_life=False
+            )
 
         try:
             prompt_template = self.load_prompt()
             chat_history = self.session_manager.get_chat_history()
-
             history_context = ""
             if chat_history:
                 recent_history = (
@@ -93,10 +104,8 @@ class TopicDetectAgent(ChatAgent):
             result = parse_json_from_response(response.content)
 
             needs_search = result.get("needs_search", False)
-            search_term = result.get("search_term", None)
+            search_term = result.get("search_term") if needs_search else None
             is_daily_life = result.get("is_daily_life", False)
-
-            requests_content = self._check_content_request(user_message)
 
             if needs_search and search_term and influencer_name:
                 if "인물명" in search_term:
@@ -105,11 +114,17 @@ class TopicDetectAgent(ChatAgent):
                     search_term = f"{influencer_name} {search_term}"
 
             print(
-                f"[TopicDetectAgent] 🔍 검색 필요: {needs_search} | 검색어: {search_term} | 일상: {is_daily_life} | 콘텐츠 요청: {requests_content} | 판단 근거: {result.get('reason', 'N/A')}"
+                f"[TopicDetectAgent] 🔍 검색 필요: {needs_search} | 검색어: {search_term} | 일상: {is_daily_life} | 판단 근거: {result.get('reason', 'N/A')}"
             )
 
-            return needs_search, search_term, is_daily_life, requests_content
+            return TopicDetectionResult(
+                needs_search=needs_search,
+                search_term=search_term,
+                is_daily_life=is_daily_life,
+            )
 
         except Exception as e:
             print(f"[TopicDetectAgent] Error: {e}")
-            return False, None, False, False
+            return TopicDetectionResult(
+                needs_search=False, search_term=None, is_daily_life=False
+            )

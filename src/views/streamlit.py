@@ -254,7 +254,7 @@ def generate_response(question, conversation, search_context, sns_content):
 def display_response(
     split_parts,
     sns_content,
-    requests_content,
+    is_media_requested,
     ui_component,
     session_manager,
     spinner_context,
@@ -270,7 +270,7 @@ def display_response(
             spinner_context.__exit__(None, None, None)
 
             # SNS 콘텐츠가 있고, 사용자가 명시적으로 콘텐츠를 요청했을 때만 표시
-            if sns_content and sns_content.get("found") and requests_content:
+            if sns_content and sns_content.get("found") and is_media_requested:
                 platform = sns_content.get("platform", "")
                 url = sns_content.get("url", "")
                 thumbnail = sns_content.get("thumbnail", "")
@@ -397,7 +397,7 @@ def run_app():
                 display_response(
                     split_parts,
                     sns_content,
-                    orchestrator.requests_content,
+                    orchestrator.is_media_requested,
                     ui_component,
                     session_manager,
                     spinner_context,

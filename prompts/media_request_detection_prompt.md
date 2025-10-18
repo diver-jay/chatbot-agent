@@ -24,7 +24,7 @@ JSON 형식으로만 응답하세요:
 
 ```json
 {{
-    "requests_content": true,
+    "is_media_requested": true,
     "reason": "판단 이유"
 }}
 ```
@@ -33,7 +33,7 @@ JSON 형식으로만 응답하세요:
 
 ```json
 {{
-    "requests_content": false,
+    "is_media_requested": false,
     "reason": "판단 이유"
 }}
 ```
