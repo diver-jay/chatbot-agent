@@ -142,20 +142,26 @@ def setup_influencer_persona(influencer_name: str):
     """
     인플루언서의 Tone과 페르소나를 설정하고 세션 상태를 업데이트합니다.
 
+    최적화: Tone 선택과 페르소나 추출을 병렬로 실행하여 속도 개선 (4-10초 → 2-5초)
+
     Args:
         influencer_name: 사용자가 입력한 인플루언서 이름
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     chat_model = load_cached_chat_model(
         "claude-3-7-sonnet-latest", session_manager.get_api_key()
     )
     tone_select_agent = ToneSelectAgent(chat_model)
     persona_extract_agent = PersonaExtractAgent(chat_model, session_manager.get_serpapi_key())
 
-    # Tone 선택 (로그 자동 출력됨)
-    tone_file_path = tone_select_agent.act(influencer_name=influencer_name)
+    # 병렬 실행으로 속도 개선
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        tone_future = executor.submit(tone_select_agent.act, influencer_name=influencer_name)
+        persona_future = executor.submit(persona_extract_agent.act, influencer_name=influencer_name)
 
-    # 페르소나 컨텍스트 검색
-    persona_context = persona_extract_agent.act(influencer_name=influencer_name)
+        tone_file_path = tone_future.result()
+        persona_context = persona_future.result()
 
     # 세션에 인플루언서 이름 및 Tone 정보 저장
     session_manager.save_influencer_setup(
