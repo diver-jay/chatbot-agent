@@ -1,4 +1,3 @@
-import json
 from langchain_core.messages import HumanMessage
 from src.agents.chat_agent import ChatAgent
 from src.utils.parser import parse_json_from_response
@@ -7,9 +6,9 @@ from src.utils.logger import log
 
 
 class SNSRelevanceCheckAgent(ChatAgent):
-    def __init__(self, chat_model, file_path="prompts/sns_relevance_check_prompt.md"):
+    def __init__(self, chat_model):
         self.chat_model = chat_model
-        self.file_path = file_path
+        self.file_path = "prompts/sns_relevance_check_prompt.md"
 
     @override
     def load_prompt(self):
@@ -38,7 +37,9 @@ class SNSRelevanceCheckAgent(ChatAgent):
                 sns_title=sns_title,
             )
 
-            response_text = self.chat_model.invoke([HumanMessage(content=prompt)]).content
+            response_text = self.chat_model.invoke(
+                [HumanMessage(content=prompt)]
+            ).content
             result = parse_json_from_response(response_text)
             is_relevant = result.get("is_relevant", False)
             reason = result.get("reason", "")
@@ -49,5 +50,4 @@ class SNSRelevanceCheckAgent(ChatAgent):
 
         except Exception as e:
             log(self.__class__.__name__, f"검증 중 오류: {e}")
-            # 오류 발생 시 안전하게 관련있다고 판단 (false negative 방지)
             return True

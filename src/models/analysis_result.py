@@ -1,10 +1,13 @@
-from dataclasses import dataclass, field
-from typing import Optional
-from src.services.search_type import SearchType
+from dataclasses import dataclass
+from typing import Optional, Literal
+
+QueryType = Literal["TERM_SEARCH", "SNS_SEARCH", "GENERAL_SEARCH", "NO_SEARCH"]
+
 
 @dataclass
 class AnalysisResult:
-    """질문 분석 결과를 담는 데이터 클래스"""
-    search_type: SearchType = SearchType.NO_SEARCH
-    search_term: Optional[str] = None
-    is_media_requested: bool = False
+    query_type: QueryType
+    query: Optional[str]
+    is_daily_life: bool
+    is_media_requested: bool
+    reason: str

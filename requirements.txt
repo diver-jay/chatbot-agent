@@ -4,3 +4,4 @@ langchain-anthropic
 langchain-community
 langchain-core
 typing_extensions
+langchain-google-genai

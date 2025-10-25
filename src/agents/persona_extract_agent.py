@@ -4,6 +4,9 @@ from src.agents.chat_agent import ChatAgent
 from typing_extensions import override
 from src.utils.logger import log
 
+# Type alias for persona extraction result
+PersonaContext = str
+
 
 class PersonaExtractAgent(ChatAgent):
     def __init__(self, chat_model, serpapi_key: Optional[str] = None, file_path="prompts/persona_extraction_prompt.md"):
@@ -20,7 +23,7 @@ class PersonaExtractAgent(ChatAgent):
             raise FileNotFoundError(f"{self.file_path} 파일을 찾을 수 없습니다.")
 
     @override
-    def act(self, **kwargs) -> str:
+    def act(self, **kwargs) -> PersonaContext:
         influencer_name = kwargs.get("influencer_name")
         if not self.serpapi_key or not influencer_name:
             return ""

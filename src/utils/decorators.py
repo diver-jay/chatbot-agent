@@ -2,7 +2,7 @@ import time
 from typing import Callable, Any
 
 
-def log_analysis_result(analysis_type: str) -> Callable:
+def log_analysis_result(query_type: str) -> Callable:
     """질문 분석 메서드의 결과를 로깅하는 데코레이터 팩토리.
 
     Note: 이 데코레이터는 현재 사용되지 않음 (SearchOrchestrator가 내부 상태로 관리)
@@ -11,12 +11,12 @@ def log_analysis_result(analysis_type: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         def wrapper(*args, **kwargs) -> Any:
             print(f"\n{'='*60}")
-            print(f"[{analysis_type} Analysis START]")
+            print(f"[{query_type} Analysis START]")
             print(f"{'='*60}")
 
             result = func(*args, **kwargs)
 
-            print(f"[{analysis_type} Analysis END] 완료")
+            print(f"[{query_type} Analysis END] 완료")
             print(f"{'='*60}\n")
 
             return result

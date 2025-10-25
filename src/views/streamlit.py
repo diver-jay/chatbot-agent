@@ -160,8 +160,10 @@ def setup_influencer_persona(influencer_name: str):
         tone_future = executor.submit(tone_select_agent.act, influencer_name=influencer_name)
         persona_future = executor.submit(persona_extract_agent.act, influencer_name=influencer_name)
 
-        tone_file_path = tone_future.result()
+        tone_future.result()  # Wait for tone selection to complete
         persona_context = persona_future.result()
+
+        tone_file_path = tone_select_agent.get_tone_path()
 
     # 세션에 인플루언서 이름 및 Tone 정보 저장
     session_manager.save_influencer_setup(
