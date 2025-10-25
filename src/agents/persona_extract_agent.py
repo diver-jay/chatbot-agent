@@ -1,6 +1,6 @@
 from typing import Optional
-from src.services.search_service import SearchService
 from src.agents.chat_agent import ChatAgent
+from src.services.search_strategies import GeneralSearchStrategy
 from typing_extensions import override
 from src.utils.logger import log
 
@@ -29,9 +29,10 @@ class PersonaExtractAgent(ChatAgent):
             return ""
 
         try:
-            search_service = SearchService(api_key=self.serpapi_key)
-            search_results = search_service.search_web(influencer_name)
-            search_summary = search_service.extract_summary(search_results)
+            # SearchService 대신 GeneralSearchStrategy를 사용
+            search_strategy = GeneralSearchStrategy(serpapi_key=self.serpapi_key)
+            # search()는 요약된 컨텍스트와 None을 반환
+            search_summary, _ = search_strategy.search(query=influencer_name, question="")
 
             prompt_template = self.load_prompt()
             persona_extraction_prompt = prompt_template.format(
