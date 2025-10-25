@@ -31,7 +31,7 @@ class GeneralSearchService(SearchService):
 
     def __init__(self):
         self.api_key = os.getenv("SERPAPI_API_KEY")
-        self.base_url = "https://serpapi.com/search"
+        self.serpapi_base_url = os.getenv("SERPAPI_BASE_URL", "https://serpapi.com/search")
 
     @retry_on_error(max_attempts=2, delay=2.0)
     def search(self, query: str, question: str) -> Tuple[str, Optional[Dict[str, Any]]]:
@@ -57,7 +57,7 @@ class GeneralSearchService(SearchService):
                 "hl": "ko",
                 "gl": "kr",
             }
-            response = requests.get(self.base_url, params=params, timeout=10)
+            response = requests.get(self.serpapi_base_url, params=params, timeout=10)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -89,7 +89,7 @@ class TermSearchService(SearchService):
 
     def __init__(self):
         self.api_key = os.getenv("SERPAPI_API_KEY")
-        self.base_url = "https://serpapi.com/search"
+        self.serpapi_base_url = os.getenv("SERPAPI_BASE_URL", "https://serpapi.com/search")
 
     @retry_on_error(max_attempts=2, delay=2.0)
     def search(self, query: str, question: str) -> Tuple[str, Optional[Dict[str, Any]]]:
@@ -115,7 +115,7 @@ class TermSearchService(SearchService):
                 "hl": "ko",
                 "gl": "kr",
             }
-            response = requests.get(self.base_url, params=params, timeout=10)
+            response = requests.get(self.serpapi_base_url, params=params, timeout=10)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -149,8 +149,8 @@ class SnsSearchService(SearchService):
         self.api_key = os.getenv("SERPAPI_API_KEY")
         self.youtube_api_key = os.getenv("YOUTUBE_API_KEY")
         self.relevance_checker = relevance_checker
-        self.base_url = "https://serpapi.com/search"
-        self.youtube_base_url = "https://www.googleapis.com/youtube/v3/search"
+        self.serpapi_base_url = os.getenv("SERPAPI_BASE_URL", "https://serpapi.com/search")
+        self.youtube_base_url = os.getenv("YOUTUBE_BASE_URL", "https://www.googleapis.com/youtube/v3/search")
         self._fallback_service = GeneralSearchService()
 
     @retry_on_error(max_attempts=2, delay=2.0)
@@ -292,7 +292,7 @@ class SnsSearchService(SearchService):
         if tbs_value:
             params["tbs"] = tbs_value
         try:
-            response = requests.get(self.base_url, params=params, timeout=30)
+            response = requests.get(self.serpapi_base_url, params=params, timeout=30)
             response.raise_for_status()
             results = response.json().get("images_results", [])
             candidates = []
