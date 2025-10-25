@@ -45,6 +45,7 @@ class QuestionAnalyzer(ChatAgent):
             )
 
             response = self.chat_model.invoke([HumanMessage(content=prompt)])
+            log(self.__class__.__name__, f"🔍 [DEBUG] LLM 원본 응답:\n{response.content}")
             return self._parse_analysis_response(response.content)
 
         except Exception as e:

@@ -1,18 +1,15 @@
 import streamlit as st
 import time
-from datetime import datetime
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # 분리된 모듈 임포트
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.prompts import MessagesPlaceholder
 from src.models.model_factory import ChatModelFactory
-from src.agents.response_split_agent import ResponseSplitAgent
-
-# from src.services.image_selector import select_image_for_context
 from src.models.session_manager import StreamlitSessionManager
 from src.views.ui_components import StreamlitUIComponent
 from src.agents.tone_select_agent import ToneSelectAgent
+from src.agents.response_split_agent import ResponseSplitAgent
 from src.agents.persona_extract_agent import PersonaExtractAgent
 from src.services.search_orchestrator import SearchOrchestrator
 
@@ -99,13 +96,11 @@ def apply_custom_css():
     )
 
 
-# 캐싱된 모델 로드 함수
 @st.cache_resource(show_spinner=False)
 def load_cached_chat_model(model_name, api_key):
     return ChatModelFactory.create_model(model_name, api_key)
 
 
-# 캐싱된 프롬프트 로드 함수
 @st.cache_data()
 def load_cached_prompt(prompt_path, influencer_name=None, persona_context=None):
     """
@@ -153,12 +148,16 @@ def setup_influencer_persona(influencer_name: str):
         "claude-3-7-sonnet-latest", session_manager.get_api_key()
     )
     tone_select_agent = ToneSelectAgent(chat_model)
-    persona_extract_agent = PersonaExtractAgent(chat_model, session_manager.get_serpapi_key())
+    persona_extract_agent = PersonaExtractAgent(chat_model)
 
     # 병렬 실행으로 속도 개선
     with ThreadPoolExecutor(max_workers=2) as executor:
-        tone_future = executor.submit(tone_select_agent.act, influencer_name=influencer_name)
-        persona_future = executor.submit(persona_extract_agent.act, influencer_name=influencer_name)
+        tone_future = executor.submit(
+            tone_select_agent.act, influencer_name=influencer_name
+        )
+        persona_future = executor.submit(
+            persona_extract_agent.act, influencer_name=influencer_name
+        )
 
         tone_future.result()  # Wait for tone selection to complete
         persona_context = persona_future.result()

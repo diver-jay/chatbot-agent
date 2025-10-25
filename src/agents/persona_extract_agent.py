@@ -1,6 +1,6 @@
 from typing import Optional
 from src.agents.chat_agent import ChatAgent
-from src.services.search_strategies import GeneralSearchStrategy
+from src.services.search_services import GeneralSearchService
 from typing_extensions import override
 from src.utils.logger import log
 
@@ -11,6 +11,8 @@ PersonaContext = str
 class PersonaExtractAgent(ChatAgent):
     def __init__(self, chat_model, serpapi_key: Optional[str] = None, file_path="prompts/persona_extraction_prompt.md"):
         self.chat_model = chat_model
+        # serpapi_key는 더 이상 GeneralSearchService에 필요하지 않지만,
+        # 외부에서 키 존재 여부를 확인하는 로직을 위해 유지할 수 있습니다.
         self.serpapi_key = serpapi_key
         self.file_path = file_path
 
@@ -29,10 +31,9 @@ class PersonaExtractAgent(ChatAgent):
             return ""
 
         try:
-            # SearchService 대신 GeneralSearchStrategy를 사용
-            search_strategy = GeneralSearchStrategy(serpapi_key=self.serpapi_key)
-            # search()는 요약된 컨텍스트와 None을 반환
-            search_summary, _ = search_strategy.search(query=influencer_name, question="")
+            # GeneralSearchService는 이제 생성자에서 키를 요구하지 않습니다.
+            search_service = GeneralSearchService()
+            search_summary, _ = search_service.search(query=influencer_name, question="")
 
             prompt_template = self.load_prompt()
             persona_extraction_prompt = prompt_template.format(

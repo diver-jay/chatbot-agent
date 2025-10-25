@@ -5,12 +5,12 @@ from src.agents.question_analyzer import QuestionAnalyzer
 from src.agents.sns_relevance_check_agent import SNSRelevanceCheckAgent
 from src.models.analysis_result import AnalysisResult
 from src.utils.logger import log
-from src.services.search_strategies import (
-    SearchStrategy,
-    NoSearchStrategy,
-    TermSearchStrategy,
-    SnsSearchStrategy,
-    GeneralSearchStrategy,
+from src.services.search_services import (
+    SearchService,
+    NoSearchService,
+    TermSearchService,
+    SnsSearchService,
+    GeneralSearchService,
 )
 
 
@@ -22,20 +22,13 @@ class SearchOrchestrator:
         self.question_analyzer = QuestionAnalyzer(chat_model, session_manager)
         self.relevance_check_agent = SNSRelevanceCheckAgent(chat_model)
 
-        serpapi_key = session_manager.get_serpapi_key()
-        youtube_key = session_manager.get_youtube_api_key()
-
-        strategy_args = {
-            "serpapi_key": serpapi_key,
-            "youtube_api_key": youtube_key,
-            "relevance_checker": self.relevance_check_agent,
-        }
-
-        self._strategies: Dict[str, SearchStrategy] = {
-            "NO_SEARCH": NoSearchStrategy(**strategy_args),
-            "TERM_SEARCH": TermSearchStrategy(**strategy_args),
-            "SNS_SEARCH": SnsSearchStrategy(**strategy_args),
-            "GENERAL_SEARCH": GeneralSearchStrategy(**strategy_args),
+        self._strategies: Dict[str, SearchService] = {
+            "NO_SEARCH": NoSearchService(),
+            "TERM_SEARCH": TermSearchService(),
+            "SNS_SEARCH": SnsSearchService(
+                relevance_checker=self.relevance_check_agent
+            ),
+            "GENERAL_SEARCH": GeneralSearchService(),
         }
 
         self._analysis_result = AnalysisResult(

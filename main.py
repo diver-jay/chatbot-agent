@@ -5,18 +5,19 @@
     streamlit run main.py
 """
 
+from dotenv import load_dotenv
+
+# .env 파일에서 환경 변수를 로드합니다.
+# 이 코드는 다른 모듈이 import 되기 전에 실행되어야 합니다.
+load_dotenv()
+
 from src.views.streamlit import configure_page, apply_custom_css, run_app
 
 
 def main():
-    """메인 애플리케이션 진입점"""
-    # 페이지 설정
     configure_page()
-
-    # 커스텀 CSS 적용
     apply_custom_css()
 
-    # 애플리케이션 실행
     run_app()
 
 

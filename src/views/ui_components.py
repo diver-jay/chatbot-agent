@@ -73,34 +73,19 @@ class StreamlitUIComponent(UIComponent):
                 help="Claude API 사용을 위한 Anthropic API 키를 입력하세요",
             )
 
-            # SerpAPI 키 입력
-            serpapi_api_key = st.text_input(
-                "SerpAPI Key",
-                type="password",
-                value=st.session_state.get("serpapi_api_key", ""),
-                help="검색 기능 사용을 위한 SerpAPI 키를 입력하세요",
-            )
-
-            # YouTube API 키 입력
-            youtube_api_key = st.text_input(
-                "YouTube API Key",
-                type="password",
-                value=st.session_state.get("youtube_api_key", ""),
-                help="YouTube 검색 기능 사용을 위한 YouTube Data API v3 키를 입력하세요",
-            )
-
             # API 키 등록 버튼
             if st.button("API 키 등록"):
                 if anthropic_api_key:
                     st.session_state.anthropic_api_key = anthropic_api_key
                     st.session_state.api_key_submitted = True
-                    st.success("Anthropic API 키가 등록되었습니다")
-                if serpapi_api_key:
-                    st.session_state.serpapi_api_key = serpapi_api_key
-                    st.success("SerpAPI 키가 등록되었습니다")
-                if youtube_api_key:
-                    st.session_state.youtube_api_key = youtube_api_key
-                    st.success("YouTube API 키가 등록되었습니다")
+
+                    # .env 파일에서 API 키를 읽어와 세션 상태에 저장
+                    st.session_state.serpapi_api_key = os.getenv("SERPAPI_API_KEY")
+                    st.session_state.youtube_api_key = os.getenv("YOUTUBE_API_KEY")
+
+                    st.success("✅ API 키가 등록되었습니다")
+                else:
+                    st.error("❌ Anthropic API 키를 입력해주세요")
 
             # 대화 초기화 버튼
             if st.button("대화 초기화"):
