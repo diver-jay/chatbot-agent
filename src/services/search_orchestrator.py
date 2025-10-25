@@ -5,13 +5,11 @@ from src.agents.question_analyzer import QuestionAnalyzer
 from src.agents.sns_relevance_check_agent import SNSRelevanceCheckAgent
 from src.models.analysis_result import AnalysisResult
 from src.utils.logger import log
-from src.services.search_services import (
-    SearchService,
-    NoSearchService,
-    TermSearchService,
-    SnsSearchService,
-    GeneralSearchService,
-)
+from src.services.search_service import SearchService
+from src.services.no_search_service import NoSearchService
+from src.services.term_search_service import TermSearchService
+from src.services.sns_search_service import SnsSearchService
+from src.services.general_search_service import GeneralSearchService
 
 
 class SearchOrchestrator:
