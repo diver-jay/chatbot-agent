@@ -7,7 +7,6 @@ ToneType = Literal["mentor", "influencer_20s", "celebrity_20s"]
 
 
 class ToneSelectAgent(ChatAgent):
-    # 사용 가능한 Tone 템플릿 경로
     TONE_TEMPLATES = {
         "influencer_20s": "prompts/tone_influencer_20s.md",
         "celebrity_20s": "prompts/tone_celebrity_20s.md",

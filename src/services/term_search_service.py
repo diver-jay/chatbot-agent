@@ -10,11 +10,12 @@ from src.utils.decorators import retry_on_error
 
 
 class TermSearchService(SearchService):
-    """신조어/용어 검색을 위한 독립적인 서비스"""
 
     def __init__(self):
         self.api_key = os.getenv("SERPAPI_API_KEY")
-        self.serpapi_base_url = os.getenv("SERPAPI_BASE_URL", "https://serpapi.com/search")
+        self.serpapi_base_url = os.getenv(
+            "SERPAPI_BASE_URL", "https://serpapi.com/search"
+        )
 
     @retry_on_error(max_attempts=2, delay=2.0)
     def search(self, query: str, question: str) -> Tuple[str, Optional[Dict[str, Any]]]:

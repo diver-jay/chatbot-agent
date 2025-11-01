@@ -12,14 +12,17 @@ from src.utils.decorators import retry_on_error
 
 
 class SnsSearchService(SearchService):
-    """SNS 콘텐츠를 검색하고, 실패 시 일반 검색으로 fallback하는 독립적인 서비스"""
 
     def __init__(self, relevance_checker):
         self.api_key = os.getenv("SERPAPI_API_KEY")
         self.youtube_api_key = os.getenv("YOUTUBE_API_KEY")
         self.relevance_checker = relevance_checker
-        self.serpapi_base_url = os.getenv("SERPAPI_BASE_URL", "https://serpapi.com/search")
-        self.youtube_base_url = os.getenv("YOUTUBE_BASE_URL", "https://www.googleapis.com/youtube/v3/search")
+        self.serpapi_base_url = os.getenv(
+            "SERPAPI_BASE_URL", "https://serpapi.com/search"
+        )
+        self.youtube_base_url = os.getenv(
+            "YOUTUBE_BASE_URL", "https://www.googleapis.com/youtube/v3/search"
+        )
         self._fallback_service = GeneralSearchService()
 
     @retry_on_error(max_attempts=2, delay=2.0)
@@ -45,10 +48,14 @@ class SnsSearchService(SearchService):
                 try:
                     # The 'Z' in the ISO format string is not supported by fromisoformat in all python versions.
                     # Replacing 'Z' with '+00:00' makes it compatible.
-                    pub_date = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+                    pub_date = datetime.fromisoformat(
+                        published_at.replace("Z", "+00:00")
+                    )
                     date_info = f"게시물 등록일: {get_formatted_date(pub_date)}\n"
                 except (ValueError, TypeError):
-                    log(self.__class__.__name__, f"Could not parse date: {published_at}")
+                    log(
+                        self.__class__.__name__, f"Could not parse date: {published_at}"
+                    )
 
             search_context = f"\n\n[{platform_name} 게시물 정보]\n제목: {sns_title}\n{date_info}\n[참고] 오늘 날짜: {current_date}\n"
             return search_context, sns_content
@@ -68,7 +75,7 @@ class SnsSearchService(SearchService):
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             for tbs, period in time_ranges:
                 log(self.__class__.__name__, f"Searching SNS for period: {period}")
-                
+
                 period_futures = []
                 period_futures.append(
                     executor.submit(
@@ -95,12 +102,21 @@ class SnsSearchService(SearchService):
                                 platform=candidate.get("platform", ""),
                                 search_term=query,
                             ):
-                                log(self.__class__.__name__, f"Found relevant SNS content in period: {period}")
+                                log(
+                                    self.__class__.__name__,
+                                    f"Found relevant SNS content in period: {period}",
+                                )
                                 return {"found": True, **candidate}
                     except Exception as e:
-                        log(self.__class__.__name__, f"Error processing future in SNS search: {e}")
-        
-        log(self.__class__.__name__, "No relevant SNS content found across all time periods.")
+                        log(
+                            self.__class__.__name__,
+                            f"Error processing future in SNS search: {e}",
+                        )
+
+        log(
+            self.__class__.__name__,
+            "No relevant SNS content found across all time periods.",
+        )
         return {"found": False}
 
     def _clean_youtube_query(self, query: str) -> str:
