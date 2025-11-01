@@ -90,6 +90,16 @@ def apply_custom_css():
 [data-testid="stChatMessageAvatarUser"] {
     display: none !important;
 }
+
+/* SNS 썸네일 hover 효과 */
+.stMarkdown a img {
+    transition: all 0.3s ease;
+}
+.stMarkdown a img:hover {
+    opacity: 0.8;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
 </style>
 """,
         unsafe_allow_html=True,
@@ -282,14 +292,29 @@ def display_response(
                 url = sns_content.get("url", "")
                 thumbnail = sns_content.get("thumbnail", "")
 
-                # 썸네일이 있으면 표시
+                # 썸네일 표시 (Instagram: 이미지만, YouTube: 클릭 가능한 링크)
                 if thumbnail:
-                    st.image(thumbnail, use_container_width=False, width=300)
-
-                # 링크 버튼 표시
-                platform_emoji = "📷" if platform == "instagram" else "🎥"
-                platform_name = "Instagram" if platform == "instagram" else "YouTube"
-                st.markdown(f"{platform_emoji} [{platform_name}에서 보기]({url})")
+                    if platform == "instagram":
+                        # Instagram: 링크 없이 이미지만 표시
+                        st.markdown(
+                            f"""
+                            <img src="{thumbnail}" width="300" style="border-radius: 8px; display: block;">
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    elif platform == "youtube":
+                        # YouTube: 썸네일을 클릭 가능한 링크로 표시
+                        st.markdown(
+                            f"""
+                            <a href="{url}" target="_blank" style="text-decoration: none;">
+                                <img src="{thumbnail}" width="300" style="border-radius: 8px; cursor: pointer; display: block; transition: opacity 0.2s;">
+                            </a>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        # 그 외 플랫폼은 표시하지 않음
+                        return
 
                 # SNS 콘텐츠와 함께 메시지 저장
                 session_manager.add_message("assistant", part, sns_content=sns_content)

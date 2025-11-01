@@ -114,7 +114,26 @@ class StreamlitUIComponent(UIComponent):
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-                # 어시스턴트 메시지에 이미지가 있으면 표시
+
+                # 어시스턴트 메시지에 SNS 콘텐츠가 있으면 표시
+                if message["role"] == "assistant" and "sns_content" in message:
+                    sns_content = message["sns_content"]
+                    if sns_content and sns_content.get("found"):
+                        thumbnail = sns_content.get("thumbnail", "")
+                        url = sns_content.get("url", "")
+                        platform = sns_content.get("platform", "")
+
+                        if thumbnail:
+                            st.markdown(
+                                f"""
+                                <a href="{url}" target="_blank" style="text-decoration: none;">
+                                    <img src="{thumbnail}" width="300" style="border-radius: 8px; cursor: pointer; display: block; transition: opacity 0.2s;">
+                                </a>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                # 어시스턴트 메시지에 이미지가 있으면 표시 (레거시 지원)
                 if message["role"] == "assistant" and "image" in message:
                     if os.path.exists(message["image"]):
                         st.image(message["image"], width=200, caption="😊")
