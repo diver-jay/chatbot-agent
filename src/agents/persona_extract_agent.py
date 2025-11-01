@@ -16,8 +16,6 @@ class PersonaExtractAgent(ChatAgent):
         file_path="prompts/persona_extraction_prompt.md",
     ):
         self.chat_model = chat_model
-        # serpapi_key는 더 이상 GeneralSearchService에 필요하지 않지만,
-        # 외부에서 키 존재 여부를 확인하는 로직을 위해 유지할 수 있습니다.
         self.serpapi_key = serpapi_key
         self.file_path = file_path
 
@@ -36,7 +34,6 @@ class PersonaExtractAgent(ChatAgent):
             return ""
 
         try:
-            # GeneralSearchService는 이제 생성자에서 키를 요구하지 않습니다.
             search_service = GeneralSearchService()
             search_summary, _ = search_service.search(
                 query=influencer_name, question=""
