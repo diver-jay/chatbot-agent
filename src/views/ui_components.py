@@ -87,13 +87,65 @@ class StreamlitUIComponent(UIComponent):
                 else:
                     st.error("❌ Anthropic API 키를 입력해주세요")
 
-            # 대화 초기화 버튼
-            if st.button("대화 초기화"):
-                st.session_state.messages = []
-                st.session_state.chat_history = StreamlitChatMessageHistory(
-                    key="chat_messages"
-                )
-                st.rerun()
+            st.divider()
+
+            # 커스텀 Tone Prompt 업로드
+            st.subheader("커스텀 페르소나 설정")
+            uploaded_file = st.file_uploader(
+                "Tone Prompt 파일 업로드 (.md)",
+                type=["md"],
+                help="커스텀 페르소나 tone prompt를 업로드하여 AI의 말투와 성격을 변경할 수 있습니다",
+                key="custom_tone_uploader"
+            )
+
+            if uploaded_file is not None:
+                # 이미 처리된 파일인지 확인 (무한 루프 방지)
+                current_uploaded_file = st.session_state.get("last_uploaded_file")
+
+                if current_uploaded_file != uploaded_file.name:
+                    # 새로운 파일이 업로드됨
+                    # 업로드된 파일 내용 읽기
+                    file_content = uploaded_file.read().decode("utf-8")
+
+                    # custom 디렉토리 생성
+                    custom_dir = "prompts/custom"
+                    os.makedirs(custom_dir, exist_ok=True)
+
+                    # 파일 저장 경로 생성
+                    custom_file_path = os.path.join(custom_dir, uploaded_file.name)
+
+                    # 파일 저장
+                    with open(custom_file_path, "w", encoding="utf-8") as f:
+                        f.write(file_content)
+
+                    # 세션에 커스텀 tone 경로 저장
+                    st.session_state.custom_tone_path = custom_file_path
+                    st.session_state.last_uploaded_file = uploaded_file.name
+
+                    # 자동으로 대화 초기화 및 인플루언서 설정 화면으로 이동
+                    st.session_state.messages = []
+                    st.session_state.chat_history = StreamlitChatMessageHistory(
+                        key="chat_messages"
+                    )
+                    st.session_state.setup_complete = False
+                    st.session_state.loading = False
+
+                    # 메시지 없이 바로 인플루언서 입력 화면으로 전환
+                    st.rerun()
+
+            # 현재 적용된 커스텀 Tone 표시
+            if st.session_state.get("custom_tone_path"):
+                st.caption(f"📝 현재 커스텀 Tone: {os.path.basename(st.session_state.custom_tone_path)}")
+                if st.button("커스텀 Tone 제거"):
+                    st.session_state.custom_tone_path = None
+                    st.session_state.last_uploaded_file = None
+                    st.session_state.messages = []
+                    st.session_state.chat_history = StreamlitChatMessageHistory(
+                        key="chat_messages"
+                    )
+                    st.session_state.setup_complete = False
+                    st.session_state.loading = False
+                    st.rerun()
 
             st.divider()
             st.caption("© 2025 심심이 스타일 챗봇. Powered by Claude")

@@ -163,6 +163,7 @@ def setup_influencer_persona(influencer_name: str):
     인플루언서의 Tone과 페르소나를 설정하고 세션 상태를 업데이트합니다.
 
     최적화: Tone 선택과 페르소나 추출을 병렬로 실행하여 속도 개선 (4-10초 → 2-5초)
+    커스텀 Tone이 업로드되어 있으면 ToneSelectAgent를 건너뛰고 커스텀 Tone을 사용합니다.
 
     Args:
         influencer_name: 사용자가 입력한 인플루언서 이름
@@ -172,22 +173,35 @@ def setup_influencer_persona(influencer_name: str):
     chat_model = load_cached_chat_model(
         "claude-3-7-sonnet-latest", session_manager.get_api_key()
     )
-    tone_select_agent = ToneSelectAgent(chat_model)
-    persona_extract_agent = PersonaExtractAgent(chat_model)
 
-    # 병렬 실행으로 속도 개선
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        tone_future = executor.submit(
-            tone_select_agent.act, influencer_name=influencer_name
-        )
-        persona_future = executor.submit(
-            persona_extract_agent.act, influencer_name=influencer_name
-        )
+    # 커스텀 Tone이 업로드되어 있는지 확인
+    custom_tone_path = st.session_state.get("custom_tone_path")
 
-        tone_future.result()  # Wait for tone selection to complete
-        persona_context = persona_future.result()
+    if custom_tone_path:
+        # 커스텀 Tone 사용 시: PersonaExtractAgent만 실행
+        print(f"[Setup] ✅ 커스텀 Tone 사용: {custom_tone_path}")
+        persona_extract_agent = PersonaExtractAgent(chat_model)
+        persona_context = persona_extract_agent.act(influencer_name=influencer_name)
+        tone_file_path = custom_tone_path
+    else:
+        # 기본 동작: Tone 선택 + 페르소나 추출 병렬 실행
+        tone_select_agent = ToneSelectAgent(chat_model)
+        persona_extract_agent = PersonaExtractAgent(chat_model)
 
-        tone_file_path = tone_select_agent.get_tone_path()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            tone_future = executor.submit(
+                tone_select_agent.act, influencer_name=influencer_name
+            )
+            persona_future = executor.submit(
+                persona_extract_agent.act, influencer_name=influencer_name
+            )
+
+            tone_future.result()  # Wait for tone selection to complete
+            persona_context = persona_future.result()
+
+            tone_file_path = tone_select_agent.get_tone_path()
+
+        print(f"[Setup] ✅ 자동 Tone 선택: {tone_file_path}")
 
     # 세션에 인플루언서 이름 및 Tone 정보 저장
     session_manager.save_influencer_setup(
