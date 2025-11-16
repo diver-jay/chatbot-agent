@@ -91,6 +91,36 @@ class SessionManager(ABC):
         """대화 히스토리를 반환합니다."""
         pass
 
+    @abstractmethod
+    def get_proactive_share_count(self) -> int:
+        """선제적 공유 횟수를 반환합니다."""
+        pass
+
+    @abstractmethod
+    def get_shared_topics_list(self) -> list:
+        """공유된 주제 목록을 반환합니다."""
+        pass
+
+    @abstractmethod
+    def increment_proactive_share_count(self):
+        """선제적 공유 횟수를 1 증가시킵니다."""
+        pass
+
+    @abstractmethod
+    def add_shared_topic(self, topic: str):
+        """공유된 주제를 목록에 추가합니다."""
+        pass
+
+    @abstractmethod
+    def add_conversation_turn(self, user_message: str, ai_response: str):
+        """대화 쌍(user-ai turn)을 저장합니다."""
+        pass
+
+    @abstractmethod
+    def get_recent_conversation_turns(self, count: int) -> list:
+        """최근 N개의 대화 쌍을 반환합니다. 대화 쌍이 count보다 적으면 빈 리스트 반환."""
+        pass
+
 
 class StreamlitSessionManager(SessionManager):
     """Streamlit 기반 세션 상태 관리 구현체"""
@@ -107,6 +137,12 @@ class StreamlitSessionManager(SessionManager):
             st.session_state.messages = []
         if "setup_complete" not in st.session_state:
             st.session_state.setup_complete = False
+        if "proactive_share_count" not in st.session_state:
+            st.session_state.proactive_share_count = 0
+        if "shared_topics_list" not in st.session_state:
+            st.session_state.shared_topics_list = []
+        if "conversation_turns" not in st.session_state:
+            st.session_state.conversation_turns = []
 
     def save_influencer_setup(
         self,
@@ -162,3 +198,33 @@ class StreamlitSessionManager(SessionManager):
 
     def get_chat_history(self):
         return st.session_state.get("messages", [])
+
+    def get_proactive_share_count(self) -> int:
+        return st.session_state.get("proactive_share_count", 0)
+
+    def get_shared_topics_list(self) -> list:
+        return st.session_state.get("shared_topics_list", [])
+
+    def increment_proactive_share_count(self):
+        st.session_state.proactive_share_count += 1
+
+    def add_shared_topic(self, topic: str):
+        if topic not in st.session_state.shared_topics_list:
+            st.session_state.shared_topics_list.append(topic)
+
+    def add_conversation_turn(self, user_message: str, ai_response: str):
+        st.session_state.conversation_turns.append({
+            "user": user_message,
+            "ai": ai_response
+        })
+
+    def get_recent_conversation_turns(self, count: int) -> list:
+        """최근 N개의 대화 쌍을 반환합니다.
+
+        대화 쌍이 count보다 적으면 존재하는 만큼만 반환합니다.
+        예: count=3인데 대화가 1개만 있으면 1개 반환, 2개면 2개 반환
+        """
+        turns = st.session_state.conversation_turns
+        if not turns:
+            return []
+        return turns[-min(count, len(turns)):]

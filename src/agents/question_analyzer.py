@@ -35,17 +35,32 @@ class QuestionAnalyzer(ChatAgent):
             )
 
         try:
+            chat_history = self.session_manager.get_chat_history()
+            log(
+                self.__class__.__name__,
+                f"[DEBUG] History for cooldown check: {chat_history}",
+            )
+
             history_context = self._get_recent_chat_history()
+
+            # 선제적 공유 상태를 세션에서 가져옵니다.
+            proactive_share_count = self.session_manager.get_proactive_share_count()
+            shared_topics_list = self.session_manager.get_shared_topics_list()
 
             prompt_template = self.load_prompt()
             prompt = prompt_template.format(
                 history_context=history_context,
                 user_message=user_message,
                 influencer_name=influencer_name if influencer_name else "없음",
+                proactive_share_count=proactive_share_count,
+                shared_topics_list=str(shared_topics_list),
             )
 
             response = self.chat_model.invoke([HumanMessage(content=prompt)])
-            log(self.__class__.__name__, f"🔍 [DEBUG] LLM 원본 응답:\n{response.content}")
+            log(
+                self.__class__.__name__,
+                f"🔍 [DEBUG] LLM 원본 응답:\n{response.content}",
+            )
             return self._parse_analysis_response(response.content)
 
         except Exception as e:

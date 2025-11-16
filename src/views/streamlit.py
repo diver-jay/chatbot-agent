@@ -121,6 +121,21 @@ def load_cached_prompt(prompt_path, influencer_name=None, persona_context=None):
         with open(prompt_path, "r", encoding="utf-8") as f:
             prompt_content = f.read()
 
+        # ========== 디버깅 로그 추가 ==========
+        print("\n" + "=" * 80)
+        print("[DEBUG] load_cached_prompt - 프롬프트 로드")
+        print("=" * 80)
+        print(f"프롬프트 경로: {prompt_path}")
+        print(f"인플루언서 이름: {influencer_name}")
+
+        # {chat_histories} 플레이스홀더 체크
+        if "{chat_histories}" in prompt_content:
+            print("✅ {chat_histories} 플레이스홀더 발견")
+        else:
+            print("❌ {chat_histories} 플레이스홀더 없음")
+        print("=" * 80 + "\n")
+        # ========================================
+
         # 페르소나 정보 주입
         if influencer_name:
             persona_injection = f"\n\n**중요**: 당신은 '{influencer_name}' 본인입니다. 팬들이 '{influencer_name}님 팬이에요' 또는 '{influencer_name} 좋아해요'라고 말하면, {influencer_name}을 제3자로 언급하지 말고 본인의 시점('나')에서 답변하세요.\n"
@@ -236,6 +251,28 @@ def generate_response(question, conversation, search_context, sns_content):
     Returns:
         str: 생성된 응답
     """
+    # 최근 3개의 대화 쌍 가져오기
+    recent_turns = session_manager.get_recent_conversation_turns(2)
+
+    # 대화 히스토리 텍스트 생성
+    chat_histories = ""
+    if recent_turns:
+        for idx, turn in enumerate(recent_turns, 1):
+            chat_histories += f"[대화 {idx}]\n"
+            chat_histories += f"User: {turn['user']}\n"
+            chat_histories += f"AI: {turn['ai']}\n\n"
+
+    # ========== 디버깅 로그 ==========
+    print("\n" + "=" * 80)
+    print("[DEBUG] generate_response - 대화 히스토리 분석")
+    print("=" * 80)
+    print(f"최근 대화 턴 개수: {len(recent_turns)}")
+    print(
+        f"\nchat_histories 내용:\n{chat_histories if chat_histories else '(비어있음)'}"
+    )
+    print("=" * 80 + "\n")
+    # ===================================
+
     # 검색 컨텍스트가 있으면 질문에 추가
     enhanced_question = question + search_context
 
@@ -256,14 +293,27 @@ def generate_response(question, conversation, search_context, sns_content):
 답변 방식:
 - 자연스럽게 "{platform_name}에 올렸는데 봤어?", "어제 {platform_name}에 올린 거 있는데~" 같은 표현 사용
 - SNS 링크 URL은 절대 출력하지 마세요 (시스템이 자동으로 첨부)
-- {platform_name} 게시물 내용과 관련된 이야기만 하세요
+- **매우 간단하게 1-2문장으로만 소개**하고 끝내세요 (상세한 설명은 하지 마세요)
+- 예시: "아, 혹시 유튜브에 올린 영상 보셨나요? [주제]에 관한 내용이었어요..." 정도로만 말하고 끝
 """
         enhanced_question += sns_instruction
     else:
         print(f"[Response Generation] ❌ SNS 콘텐츠 없음 → 일반 답변")
 
+    # ========== 최종 전달 파라미터 디버깅 ==========
+    print("\n" + "=" * 80)
+    print("[DEBUG] conversation.invoke - 최종 전달 파라미터")
+    print("=" * 80)
+    print(f"enhanced_question 길이: {len(enhanced_question)}")
+    print(f"enhanced_question 앞 200자:\n{enhanced_question[:200]}")
+    print(f"\nchat_histories가 비어있나? {len(chat_histories) == 0}")
+    print(f"chat_histories 길이: {len(chat_histories)}")
+    print("=" * 80 + "\n")
+    # ===============================================
+
     result = conversation.invoke(
-        {"input": enhanced_question}, config={"configurable": {"session_id": "default"}}
+        {"input": enhanced_question, "chat_histories": chat_histories},
+        config={"configurable": {"session_id": "default"}},
     )
     return result.content
 
@@ -286,8 +336,8 @@ def display_response(
             spinner_placeholder.markdown(part)
             spinner_context.__exit__(None, None, None)
 
-            # SNS 콘텐츠가 있고, 사용자가 명시적으로 콘텐츠를 요청했을 때만 표시
-            if sns_content and sns_content.get("found") and is_media_requested:
+            # SNS 콘텐츠가 있으면 항상 표시
+            if sns_content and sns_content.get("found"):
                 platform = sns_content.get("platform", "")
                 url = sns_content.get("url", "")
                 thumbnail = sns_content.get("thumbnail", "")
@@ -300,7 +350,7 @@ def display_response(
                             f"""
                             <img src="{thumbnail}" width="300" style="border-radius: 8px; display: block;">
                             """,
-                            unsafe_allow_html=True
+                            unsafe_allow_html=True,
                         )
                     elif platform == "youtube":
                         # YouTube: 썸네일을 클릭 가능한 링크로 표시
@@ -310,7 +360,7 @@ def display_response(
                                 <img src="{thumbnail}" width="300" style="border-radius: 8px; cursor: pointer; display: block; transition: opacity 0.2s;">
                             </a>
                             """,
-                            unsafe_allow_html=True
+                            unsafe_allow_html=True,
                         )
                     else:
                         # 그 외 플랫폼은 표시하지 않음
@@ -435,6 +485,9 @@ def run_app():
                     spinner_context,
                     spinner_placeholder,
                 )
+
+                # 3-4. 대화 쌍 저장 (질문 체크용)
+                session_manager.add_conversation_turn(question, response)
 
                 break  # 성공하면 반복 중단
 

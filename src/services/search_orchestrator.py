@@ -60,8 +60,46 @@ class SearchOrchestrator:
         log(self.__class__.__name__, f"{ '='*60}\n")
 
         try:
+            # 선제적 공유인지 확인 (명시적 요청이 아닌 경우)
+            is_proactive_sns_search = (
+                query_type == "SNS_SEARCH"
+                and not self._analysis_result.is_media_requested
+            )
+
+            # 최근 10개의 대화에서 공유 여부 확인
+            did_share_in_last_n_turns = False
+            chat_history = self.session_manager.get_chat_history()
+            for message in chat_history[-10:]:
+                if message.get("role") == "assistant" and "sns_content" in message:
+                    did_share_in_last_n_turns = True
+                    break
+
+            # 선제적 공유인데 이미 최근에 공유했다면 검색하지 않음
+            if is_proactive_sns_search and did_share_in_last_n_turns:
+                log(
+                    self.__class__.__name__,
+                    "⏭️ 최근 12턴 내에 이미 공유했으므로 중복 공유 방지",
+                )
+                return "", None
+
             strategy = self._strategies.get(query_type, self._strategies["NO_SEARCH"])
-            return strategy.search(query, question)
+            search_context, sns_content = strategy.search(query, question)
+
+            was_successful = sns_content and sns_content.get("found")
+
+            # 선제적 공유가 성공했다면 세션 상태를 업데이트합니다.
+            if is_proactive_sns_search and was_successful:
+                log(
+                    self.__class__.__name__,
+                    "선제적 공유 성공! 세션 상태를 업데이트합니다.",
+                )
+                self.session_manager.increment_proactive_share_count()
+
+                topic = self._analysis_result.query
+                if topic:
+                    self.session_manager.add_shared_topic(topic)
+
+            return search_context, sns_content
 
         except Exception as e:
             import traceback
@@ -77,4 +115,3 @@ class SearchOrchestrator:
     @property
     def is_media_requested(self) -> bool:
         return self._analysis_result.is_media_requested
-
